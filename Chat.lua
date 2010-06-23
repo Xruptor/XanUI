@@ -45,20 +45,34 @@ function XanUI_doChat()
 	  ChatTypeInfo[k].sticky = v;
 	end
 		
-	--remove alt keypress from the EditBox (no longer need alt to move around)
-	ChatFrameEditBox:SetAltArrowKeyMode(nil)
-		
-	--add more mouse wheel scrolling (alt key = scroll to top, ctrl = faster scrolling)
-	local f
-	for i=1, NUM_CHAT_WINDOWS do
-		f = _G['ChatFrame'..i]
-		
+	for i = 1, NUM_CHAT_WINDOWS do
+		local f = _G[("ChatFrame%d"):format(i)]
+
+		--add more mouse wheel scrolling (alt key = scroll to top, ctrl = faster scrolling)
 		f:EnableMouseWheel(true)
 		f:SetScript('OnMouseWheel', scrollChat)
-
 		f:SetMaxLines(250)
-	end
 		
+		local editBox = _G[("ChatFrame%dEditBox"):format(i)]
+
+		if not editBox.left then
+			editBox.left = _G[("ChatFrame%sEditBoxLeft"):format(i)]
+			editBox.right = _G[("ChatFrame%sEditBoxRight"):format(i)]
+			editBox.mid = _G[("ChatFrame%sEditBoxMid"):format(i)]
+		end
+		
+		--remove alt keypress from the EditBox (no longer need alt to move around)
+		editBox:SetAltArrowKeyMode(nil)
+
+		editBox.left:SetAlpha(0)
+		editBox.right:SetAlpha(0)
+		editBox.mid:SetAlpha(0)
+
+		editBox.focusLeft:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Left2]])
+		editBox.focusRight:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Right2]])
+		editBox.focusMid:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Mid2]])
+	end
+
 end
 
 

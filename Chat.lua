@@ -12,6 +12,10 @@ local StickyTypeChannels = {
   CHANNEL = 1,
 };
 
+for i,v in pairs(CHAT_CONFIG_CHAT_LEFT) do
+ToggleChatColorNamesByClassGroup(true, v.type)
+end
+
 local function scrollChat(frame, delta)
 	--Faster Scroll
 	if IsControlKeyDown()  then

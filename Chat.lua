@@ -1,8 +1,5 @@
 --Chat Module for XanUI
 
-local linklinkColor = "9ACD32"
-local pattern = "[wWhH][wWtT][wWtT][\46pP]%S+[^%p%s]"
-
 local StickyTypeChannels = {
   SAY = 1,
   YELL = 0,
@@ -83,6 +80,9 @@ function XanUI_doChat()
 end
 
 --URL COPY
+local linklinkColor = "9ACD32"
+local pattern = "[wWhH][wWtT][wWtT][\46pP]%S+[^%p%s]"
+
 function string.linkColor(text, linkColor)
 	return "|cff"..linkColor..text.."|r"
 end

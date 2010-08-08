@@ -6,7 +6,6 @@
 	Special thanks to Efindel for (Trav's Unit Frame Extensions)
 
 	colors the health bars based on class color
-	added class icons
 	added level indicators for party members
 	moved party indicators so not to be cluttered up
 	organizes your blizzard raid pullouts evenly on the screen
@@ -37,8 +36,7 @@
 ---COLOR BARS BY CLASS
 ----------------------------------------------------------------
 
-local   UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS =
-        UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS
+local   UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS = UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS
 local _, class, c
 
 local function colour(statusbar, unit)
@@ -75,7 +73,7 @@ function XanUI_CreateLevelButtons(frame, settings)
 	f:SetHeight(settings[1])
 
 	local t = f:CreateTexture("$parentLevelIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\ClassIcons\\Unknown")
+	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
 	t:SetAlpha(0.8)
 	t:SetAllPoints(f)
 
@@ -102,125 +100,6 @@ end
 XanUI_LoadPartyLevels()
 
 ----------------------------------------------------------------
----CLASS ICONS
-----------------------------------------------------------------
-
-local frames_POS = {}
-frames_POS["player"] = { "PlayerFrame", { 32, -12, 26 } }
-frames_POS["target"] = { "TargetFrame", { 32, 12, 26 } }
-frames_POS["party"] = { "PartyMemberFrame", { 24, -23, 16 } }
-frames_POS["pet"] = { "PetFrame", { 24, -63, 5 } }
---frames_POS["focustarget"] = { "FocusFrameToT", { 24, -6, 10 } }
---frames_POS["targettarget"] = { "TargetFrameToT", { 24, -6, 10 } }
-frames_POS["focus"] = { "FocusFrame", { 24, 24, 32 } }
-frames_POS["endprotect"] = {}
-	
-function XanUI_CreateClassButtons(frame, settings)
-	local f
-
-	if not frame then return end
-	
-	if ( frame == PlayerFrame ) then
-		f = CreateFrame("Button", "$parentClass", frame)
-	else
-		f = CreateFrame("Frame", "$parentClass", frame)
-	end
-
-	f:SetFrameStrata("MEDIUM")
-	f:SetWidth(settings[1])
-	f:SetHeight(settings[1])
-
-	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\ClassIcons\\Unknown")
-	t:SetAllPoints(f)
-
-	f:SetPoint("CENTER", settings[2], settings[3])
-	f:Show()
-end
-
-function XanUI_SetClassIcon(whichframe, class)
-	if ( not class ) then
-		class = "Unknown"
-	end
-	
-	if ( not whichframe ) then return end
-	getglobal(whichframe:GetName().."ClassIcon"):SetTexture("Interface\\AddOns\\XanUI\\ClassIcons\\"..class)
-end
-
-function XanUI_InitializeClassButton(unit, number)
-	local i
-
-	if ( number == nil ) then
-		XanUI_CreateClassButtons( getglobal(frames_POS[unit][1]), frames_POS[unit][2] )
-	else
-		for i = 1,number do
-			XanUI_CreateClassButtons( getglobal(frames_POS[unit][1]..i), frames_POS[unit][2] )
-		end
-	end
-end
-
-function XanUI_GetClass(unit)
-	local class
-	if not UnitIsPlayer(unit) then
-		class = UnitCreatureType(unit)
-	else
-		_, class = UnitClass(unit)
-	end
-	return class
-end
-
-function XanUI_UpdateClassIcon(unit, index)
-	local class, unitname, unitframe
-
-	if ( index == nil ) then
-		unitname = unit
-		unitframe = getglobal(frames_POS[unit][1])
-	else
-		unitname = unit..index
-		unitframe = getglobal(frames_POS[unit][1]..index)
-	end
-
-	if ( UnitExists(unitname) ) then
-		XanUI_SetClassIcon( unitframe, XanUI_GetClass(unitname) )
-	end
-end
-
-local _, class = UnitClass("player")
-XanUI_InitializeClassButton( "player" )
-XanUI_SetClassIcon( PlayerFrame, class )
-
-XanUI_InitializeClassButton( "party", 4 )
-XanUI_InitializeClassButton( "pet" )
-XanUI_InitializeClassButton( "target" )
-
---XanUI_InitializeClassButton( "targettarget" )
---hooksecurefunc( "TargetofTarget_Update", function(self)
---	XanUI_UpdateClassIcon( "targettarget" )
---end)
-
-
-XanUI_InitializeClassButton( "focus" )
---XanUI_InitializeClassButton( "focustarget" )
-
---[[
-FocusFrameToT:HookScript("OnUpdate", function(self, elapsed)
-	if self.TimeSinceLastUpdate == nil then self.TimeSinceLastUpdate = 0 end
-	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed;
-	
-	if (self.TimeSinceLastUpdate > 2) then
-		if self.getLastName == nil then
-			self.getLastName = UnitGUID("focustarget")
-			XanUI_UpdateClassIcon( "focustarget" )
-		elseif self.getLastName ~= UnitGUID("focustarget") then
-			self.getLastName = UnitGUID("focustarget")
-			XanUI_UpdateClassIcon( "focustarget" )
-		end
-		self.TimeSinceLastUpdate = 0;
-	end
-end)
---]]
-
-----------------------------------------------------------------
 ---FACTION INDICATORS (TARGET ONLY)
 ----------------------------------------------------------------
 
@@ -234,7 +113,7 @@ function XanUI_CreateFactionIcon(frame)
 	f:SetHeight(40)
 
 	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\ClassIcons\\Unknown")
+	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
 	t:SetAllPoints(f)
 	
 	if frame == TargetFrame then
@@ -280,32 +159,6 @@ function XanUI_UpdateFactionIcon(unit, frame)
 end
 
 XanUI_CreateFactionIcon(TargetFrame);
-XanUI_CreateFactionIcon(TargetFrameToT);
-XanUI_CreateFactionIcon(FocusFrameToT);
-
-hooksecurefunc( "TargetofTarget_Update", function(self)
-	XanUI_UpdateFactionIcon( "targettarget", TargetFrameToT)
-end)
-
-FocusFrameToT:HookScript("OnUpdate", function(self, elapsed)
-	if self.TimeSinceLastUpdate == nil then self.TimeSinceLastUpdate = 0 end
-	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed;
-	
-	if (self.TimeSinceLastUpdate > 2) then
-		if self.getLastName == nil then
-		
-			self.getLastName = UnitGUID("focustarget")
-			XanUI_UpdateFactionIcon( "focustarget", FocusFrameToT)
-			
-		elseif self.getLastName ~= UnitGUID("focustarget") then
-		
-			self.getLastName = UnitGUID("focustarget")
-			XanUI_UpdateFactionIcon( "focustarget", FocusFrameToT)
-			
-		end
-		self.TimeSinceLastUpdate = 0;
-	end
-end)
 
 ----------------------------------------------------------------
 ---RACE ICONS (TARGET ONLY)
@@ -337,10 +190,10 @@ function XanUI_CreateRaceIcon()
 	f:SetHeight(32)
 
 	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\ClassIcons\\Unknown")
+	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
 	t:SetAllPoints(f)
 
-	f:SetPoint("CENTER", 39, 37)
+	f:SetPoint("CENTER", 12, 26)
 	f:Hide()
 end
 
@@ -607,8 +460,6 @@ eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
 eventFrame:RegisterEvent("UNIT_LEVEL");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
-eventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED");
-eventFrame:RegisterEvent("UNIT_PET");
 eventFrame:RegisterEvent("ADDON_LOADED");
 eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -642,23 +493,13 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 		
 	elseif ( event == "PARTY_MEMBERS_CHANGED" or event == "UNIT_LEVEL" or event == "PLAYER_ENTERING_WORLD" ) then
 		for i = 1,4 do
-			XanUI_UpdateClassIcon("party", i)
 			XanUI_SetLevels(i)
 		end
 		XanUI_UpdateRaidPositions()
 		
 	elseif ( event == "PLAYER_TARGET_CHANGED" ) then
-		 XanUI_UpdateClassIcon("target")
 		 XanUI_UpdateFactionIcon("target", TargetFrame)
 		 XanUI_UpdateRaceIcon("target", TargetFrame)
-		 
-	elseif ( event == "PLAYER_FOCUS_CHANGED" ) then
-		XanUI_UpdateClassIcon("focus")
-
-	elseif ( event == "UNIT_PET" ) then
-		if ( arg1 == "player" ) then
-			XanUI_UpdateClassIcon("pet")
-		end
 	
 	elseif ( event == "RAID_ROSTER_UPDATE" or event == "PLAYER_REGEN_ENABLED" ) then
 		XanUI_UpdateRaidPositions()

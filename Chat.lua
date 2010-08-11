@@ -13,7 +13,7 @@ local StickyTypeChannels = {
 };
 
 for i,v in pairs(CHAT_CONFIG_CHAT_LEFT) do
-ToggleChatlinkColorNamesByClassGroup(true, v.type)
+	ToggleChatColorNamesByClassGroup(true, v.type)
 end
 
 local function scrollChat(frame, delta)

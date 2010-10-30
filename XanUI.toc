@@ -1,11 +1,8 @@
-## Interface: 30300
+## Interface: 40000
 ## Title: XanUI
 ## Author: Xruptor
-## Version:  1.4
+## Version:  1.5
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB
 
-BuffFrames.xml
-PartyCastBars.lua
-Chat.lua
 XanUI.lua

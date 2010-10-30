@@ -1,35 +1,6 @@
 --[[
 	NOTE: A lot of this addon is from bits and peices of other addons.
 	I just wanted to compile them together into one single addon for my own purposes
-	All credit where needed should be given to the original authors.
-
-	Special thanks to Efindel for (Trav's Unit Frame Extensions)
-
-	colors the health bars based on class color
-	added level indicators for party members
-	moved party indicators so not to be cluttered up
-	organizes your blizzard raid pullouts evenly on the screen
-	added faction indicators to the target frame to let you know whom is horde or alliance (will hide if unit is in PVP)
-	lock/unlock the default blizzard raid frames using /xanui
-	added health and mana text to frames.
-	mousing over a party members healthbar or manabar will show actual health and not percentage
-	added race icons for the target frame (for those moments where helmets block the view)
-	the raid pullouts will now organize themselves perfectly into columns and rows on the left of your screen
-	party frames will now show party buffs under the manabar, and debuffs to the right of the healthbar
-	added party casting bars to the right of the party manabar
-
-	added tradeskills to the blizzard targeting casting bar
-	added tradeskills to the party casting bars
-
-	Text Display:
-	Player Frame: Will show actual health and mana, health shown as a percent, is shown on upper right of frame
-	Target Frame: Will show a float version of current health and mana (ie 1345 would be 1.3k).
-			Health shown as a percent is displayed at upper left of targetframe.
-	Party Frame:	Health and Mana shown as percentages due to limited space for text.
-	Focus Frame:	Will show a float version of current health and mana (ie 1345 would be 1.3k).
-	Target of Target Frame: Will move the frame to the right of the Target Frame
-	Target of Focus Frame: Will move the frame to the right of the Focus Frame
-	
 --]]
 
 ----------------------------------------------------------------
@@ -59,45 +30,6 @@ addon:SetScript("OnEvent", function()
 	colour(sb, "mouseover")
 end)
 
-----------------------------------------------------------------
----LEVEL INDICATORS
-----------------------------------------------------------------
-
-function XanUI_CreateLevelButtons(frame, settings)
-
-	local f, g
-	f = CreateFrame("Frame", "$parentLevel", frame)
-
-	f:SetFrameStrata("MEDIUM")
-	f:SetWidth(settings[1])
-	f:SetHeight(settings[1])
-
-	local t = f:CreateTexture("$parentLevelIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
-	t:SetAlpha(0.8)
-	t:SetAllPoints(f)
-
-	g = f:CreateFontString("$parentText", "ARTWORK", "GameFontNormalSmall")
-	g:SetAlpha(0.8)
-	g:SetAllPoints(f)
-
-	f:SetPoint("CENTER", settings[2], settings[3])
-	f:Show()
-end
-
-function XanUI_SetLevels(which)
-	local level = UnitLevel("party"..which)
-	getglobal("PartyMemberFrame"..which.."LevelText"):SetText(level)
-end
-
-function XanUI_LoadPartyLevels()
-	local i
-	for i = 1,4 do
-		XanUI_CreateLevelButtons( getglobal("PartyMemberFrame"..i), { 24, -60, -10 } )
-	end
-end
-
-XanUI_LoadPartyLevels()
 
 ----------------------------------------------------------------
 ---FACTION INDICATORS (TARGET ONLY)
@@ -159,59 +91,7 @@ function XanUI_UpdateFactionIcon(unit, frame)
 end
 
 XanUI_CreateFactionIcon(TargetFrame);
-
-----------------------------------------------------------------
----RACE ICONS (TARGET ONLY)
-----------------------------------------------------------------
-
-local racesCheck = {
-	["Orc"] = "Interface\\AddOns\\XanUI\\RaceIcons\\orc",
-	["Tauren"] = "Interface\\AddOns\\XanUI\\RaceIcons\\tauren",
-	["Undead"] = "Interface\\AddOns\\XanUI\\RaceIcons\\undead",
-	["Scourge"] = "Interface\\AddOns\\XanUI\\RaceIcons\\undead",  --undead can be listed as scourge depending on language
-	["Troll"] = "Interface\\AddOns\\XanUI\\RaceIcons\\troll",
-	["Blood Elf"] = "Interface\\AddOns\\XanUI\\RaceIcons\\blood_elf",
-	["BloodElf"] = "Interface\\AddOns\\XanUI\\RaceIcons\\blood_elf",
-	["Human"] = "Interface\\AddOns\\XanUI\\RaceIcons\\human",
-	["Gnome"] = "Interface\\AddOns\\XanUI\\RaceIcons\\gnome",
-	["Dwarf"] = "Interface\\AddOns\\XanUI\\RaceIcons\\dwarf",
-	["Night Elf"] = "Interface\\AddOns\\XanUI\\RaceIcons\\night_elf",
-	["NightElf"] = "Interface\\AddOns\\XanUI\\RaceIcons\\night_elf",
-	["Draenei"] = "Interface\\AddOns\\XanUI\\RaceIcons\\draenei",
-}
-
-function XanUI_CreateRaceIcon()
-	local f
 	
-	f = CreateFrame("Frame", "$parentRace", TargetFrame)
-
-	f:SetFrameStrata("MEDIUM")
-	f:SetWidth(32)
-	f:SetHeight(32)
-
-	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
-	t:SetAllPoints(f)
-
-	f:SetPoint("CENTER", 12, 26)
-	f:Hide()
-end
-
-function XanUI_UpdateRaceIcon(unit, frame)
-	if not unit then return nil; end
-	if not frame then return nil; end
-	
-	local race, raceEn = UnitRace(unit);
-
-	if raceEn and racesCheck[raceEn] then
-		getglobal(frame:GetName().."RaceIcon"):SetTexture(racesCheck[raceEn])
-		getglobal(frame:GetName().."Race"):Show()
-	else
-		getglobal(frame:GetName().."Race"):Hide()
-	end	
-end
-
-XanUI_CreateRaceIcon();		
 
 ----------------------------------------------------------------
 --Enable a toggle that allows the default blizzard raid UI panels to lock/unlock
@@ -298,22 +178,6 @@ function XanUI_UpdateRaidPositions()
 	end
 end
 
-----------------------------------------------------------------
---Update party frame icon positions
-----------------------------------------------------------------
-
-hooksecurefunc( "PartyMemberFrame_UpdateMember", function(self)
-	if GetNumRaidMembers() > 0 then return end
- 	--Returns 1 if the specified party member exists, nil otherwise. 
- 	local id = self:GetID();
-	if ( GetPartyMember(id) ) then
-		getglobal(self:GetName().."PVPIcon"):SetPoint("TOPLEFT", 8, 11) --upper right
-		getglobal(self:GetName().."MasterIcon"):SetPoint("TOPLEFT", -5, -10) --slightly lower then leader icon (middle left)
-		getglobal(self:GetName().."LeaderIcon"):SetPoint("TOPLEFT", -3, 3) --upper left
-		getglobal(self:GetName().."RoleIcon"):ClearAllPoints()
-		getglobal(self:GetName().."RoleIcon"):SetPoint("BOTTOMLEFT", 11, -2) --upper left
-	end
-end)
 
 ----------------------------------------------------------------
 --Add percents and actual health/mana values to specific frames
@@ -410,27 +274,6 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						textString:SetText(pervalue);
 						textString:Show();
 					end
-				elseif string.len(parentName) >= 16 and string.sub(parentName, 1, 16) == "PartyMemberFrame" and frame:GetID() then
-					
-					local partyFrmName = (string.sub(parentName, 1, 16) or "PartyMemberFrame")..(frame:GetID() or 1)
-					--self:GetParent():GetAttribute('unit')
-					
-					if UnitIsDeadOrGhost("party"..frame:GetID()) then
-						textString:SetText("");
-						textString:Hide();
-						return
-					end
-					if valueMax > 0 then
-						--check for mouseover
-						if (GetMouseFocus() and GetMouseFocus():GetParent() and GetMouseFocus():GetParent():GetName() and GetMouseFocus():GetParent():GetName() == partyFrmName) then
-							textString:SetText(XanUI_smallNum(value).." / "..XanUI_smallNum(valueMax));
-						else
-							local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
-							textString:SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
-							textString:SetText(pervalue);
-							textString:Show();
-						end
-					end
 				end	
 			end
 		end
@@ -457,27 +300,18 @@ end
 
 local eventFrame = CreateFrame("Frame", "XanUIEventFrame", UIParent)
 eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
-eventFrame:RegisterEvent("UNIT_LEVEL");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 eventFrame:RegisterEvent("ADDON_LOADED");
 eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
-eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+eventFrame:RegisterEvent("PLAYER_LOGIN")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
 	if event == "ADDON_LOADED" and arg1 == "XanUI" then
 		if not XanUIDB then XanUIDB = {} end
 		DEFAULT_CHAT_FRAME:AddMessage("XanUI: Loaded /xanui");
 	
-		XanUI_PartyBuffs_OnLoad()
-		
-		--create the castbars
-		if XSpellBar then
-			for i = 1,4 do
-				XSpellBar:New(getglobal("PartyMemberFrame"..i))
-			end
-		end
-		
+	elseif ( event == "PLAYER_LOGIN") then
 		XanUI_UpdateRaidLocks()
 		
 		--Move the TargetToT Frame to the right of the target frame
@@ -487,21 +321,16 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 		--Move the FocusFrameToT Frame to the right of the Focus frame
 		FocusFrameToT:ClearAllPoints()
 		FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 80, 0);
+
+		self:UnregisterEvent("PLAYER_LOGIN")
 		
-		--do chat stuff
-		XanUI_doChat()
-		
-	elseif ( event == "PARTY_MEMBERS_CHANGED" or event == "UNIT_LEVEL" or event == "PLAYER_ENTERING_WORLD" ) then
-		for i = 1,4 do
-			XanUI_SetLevels(i)
-		end
+	elseif ( event == "PARTY_MEMBERS_CHANGED" or event == "PLAYER_ENTERING_WORLD" ) then
 		XanUI_UpdateRaidPositions()
 		
 	elseif ( event == "PLAYER_TARGET_CHANGED" ) then
 		 XanUI_UpdateFactionIcon("target", TargetFrame)
-		 XanUI_UpdateRaceIcon("target", TargetFrame)
 	
-	elseif ( event == "RAID_ROSTER_UPDATE" or event == "PLAYER_REGEN_ENABLED" ) then
+	elseif ( event == "RAID_ROSTER_UPDATE" ) then
 		XanUI_UpdateRaidPositions()
 	end
 end)

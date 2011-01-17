@@ -35,7 +35,7 @@ end)
 ---FACTION INDICATORS (TARGET ONLY)
 ----------------------------------------------------------------
 
-function XanUI_CreateFactionIcon(frame)
+function xanUI_CreateFactionIcon(frame)
 	local f
 	
 	f = CreateFrame("Frame", "$parentFaction", frame)
@@ -45,7 +45,7 @@ function XanUI_CreateFactionIcon(frame)
 	f:SetHeight(40)
 
 	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\XanUI\\Unknown")
+	t:SetTexture("Interface\\AddOns\\xanUI\\Unknown")
 	t:SetAllPoints(f)
 	
 	if frame == TargetFrame then
@@ -57,7 +57,7 @@ function XanUI_CreateFactionIcon(frame)
 	f:Hide()
 end
 
-function XanUI_UpdateFactionIcon(unit, frame)
+function xanUI_UpdateFactionIcon(unit, frame)
 	if not unit then return nil; end
 	if not frame then return nil; end
 	
@@ -90,7 +90,7 @@ function XanUI_UpdateFactionIcon(unit, frame)
 
 end
 
-XanUI_CreateFactionIcon(TargetFrame);
+xanUI_CreateFactionIcon(TargetFrame);
 	
 
 ----------------------------------------------------------------
@@ -102,15 +102,15 @@ SlashCmdList["XANUI"] = function(arg)
 	if not XanUIDB then return nil; end
 	if XanUIDB["RaidLock"] == "yes" then
 		XanUIDB["RaidLock"] = "no"
-		DEFAULT_CHAT_FRAME:AddMessage("XanUI: Blizzard Raid Pullouts are now unlocked.");
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now unlocked.");
 	else
 		XanUIDB["RaidLock"] = "yes"
-		DEFAULT_CHAT_FRAME:AddMessage("XanUI: Blizzard Raid Pullouts are now locked.");
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now locked.");
 	end
-	XanUI_UpdateRaidLocks()
+	xanUI_UpdateRaidLocks()
 end
 
-function XanUI_UpdateRaidLocks()
+function xanUI_UpdateRaidLocks()
 	if not XanUIDB["RaidLock"] then XanUIDB["RaidLock"] = "yes" end
 	
 	--lock the frames
@@ -136,7 +136,7 @@ local function framesort(a, b)
 	return a.label:GetText() < b.label:GetText()
 end
 
-function XanUI_UpdateRaidPositions()
+function xanUI_UpdateRaidPositions()
 	--number of pullsout per column
 	local fpr = 3
 	
@@ -210,13 +210,13 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(value.." / "..valueMax);
 						textString:Show();
 
 						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 							getglobal(parentName.."PercentStr"):Show()
@@ -236,13 +236,13 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
-						textString:SetText(XanUI_smallNum(value).." / "..XanUI_smallNum(valueMax));
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
 						
 						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 							getglobal(parentName.."PercentStr"):Show()
@@ -258,8 +258,8 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
-						textString:SetText(XanUI_smallNum(value).." / "..XanUI_smallNum(valueMax));
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
 					end
 				elseif parentName == "PetFrame" then
@@ -270,7 +270,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\XanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(pervalue);
 						textString:Show();
 					end
@@ -280,7 +280,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 	end
 end)
 
-function XanUI_smallNum(sNum)
+function xanUI_smallNum(sNum)
 	if not sNum then return end
 
 	sNum = tonumber(sNum)
@@ -298,7 +298,7 @@ end
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-local eventFrame = CreateFrame("Frame", "XanUIEventFrame", UIParent)
+local eventFrame = CreateFrame("Frame", "xanUIEventFrame", UIParent)
 eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
@@ -307,12 +307,12 @@ eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
-	if event == "ADDON_LOADED" and arg1 == "XanUI" then
+	if event == "ADDON_LOADED" and arg1 == "xanUI" then
 		if not XanUIDB then XanUIDB = {} end
-		DEFAULT_CHAT_FRAME:AddMessage("XanUI: Loaded /xanui");
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Loaded /xanui");
 	
 	elseif ( event == "PLAYER_LOGIN") then
-		XanUI_UpdateRaidLocks()
+		--xanUI_UpdateRaidLocks()
 		
 		--Move the TargetToT Frame to the right of the target frame
 		TargetFrameToT:ClearAllPoints()
@@ -325,13 +325,13 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 		self:UnregisterEvent("PLAYER_LOGIN")
 		
 	elseif ( event == "PARTY_MEMBERS_CHANGED" or event == "PLAYER_ENTERING_WORLD" ) then
-		XanUI_UpdateRaidPositions()
+		--xanUI_UpdateRaidPositions()
 		
 	elseif ( event == "PLAYER_TARGET_CHANGED" ) then
-		 XanUI_UpdateFactionIcon("target", TargetFrame)
+		 xanUI_UpdateFactionIcon("target", TargetFrame)
 	
 	elseif ( event == "RAID_ROSTER_UPDATE" ) then
-		XanUI_UpdateRaidPositions()
+		--xanUI_UpdateRaidPositions()
 	end
 end)
 

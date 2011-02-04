@@ -294,6 +294,28 @@ function xanUI_smallNum(sNum)
 	end
 end
 
+--[[------------------------
+	Blizzard Tradeskills Castbar
+	This will modify the target castbar to also show tradeskills
+--------------------------]]
+
+local enableTradeskills = true
+
+--initial override
+if TargetFrameSpellBar then
+	TargetFrameSpellBar.showTradeSkills = enableTradeskills
+end
+
+--double check the target castbar hasn't lost the tradeskill setting (another mod may change it)
+hooksecurefunc("CastingBarFrame_OnEvent", function(self, event, ...)
+	if self and self:GetName() == "TargetFrameSpellBar" then
+		if TargetFrameSpellBar.showTradeSkills ~= enableTradeskills then
+			TargetFrameSpellBar.showTradeSkills = enableTradeskills
+		end
+	end
+end)
+
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------

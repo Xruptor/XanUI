@@ -316,44 +316,139 @@ hooksecurefunc("CastingBarFrame_OnEvent", function(self, event, ...)
 end)
 
 
+--[[------------------------
+	This will fix the issues where the damn pet bar isn't showing up sometimes
+--------------------------]]
+
+local function checkPetBar()
+	if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
+		if not UnitInVehicle("player") or not UnitHasVehicleUI("player") then
+			PetActionBarFrame:Show()
+		end
+	end
+end
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-local eventFrame = CreateFrame("Frame", "xanUIEventFrame", UIParent)
-eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
-eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
+eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
+
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 eventFrame:RegisterEvent("ADDON_LOADED");
-eventFrame:RegisterEvent("RAID_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
-eventFrame:SetScript("OnEvent", function(self, event, ...)
-	if event == "ADDON_LOADED" and arg1 == "xanUI" then
+--we need to fix a problem where sometimes the pet bar isn't showing up!
+-- eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
+-- eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+-- eventFrame:RegisterEvent("PET_BAR_UPDATE")
+-- eventFrame:RegisterEvent("UNIT_PET")
+-- eventFrame:RegisterEvent("UNIT_AURA")
+-- eventFrame:RegisterEvent("UNIT_SPELLCAST_START")
+-- eventFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
+-- eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+-- eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+-- eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+function eventFrame:ADDON_LOADED(event, addonName)
+	if addonName == "xanUI" then
 		if not XanUIDB then XanUIDB = {} end
 		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Loaded /xanui");
-	
-	elseif ( event == "PLAYER_LOGIN") then
-		--xanUI_UpdateRaidLocks()
-		
-		--Move the TargetToT Frame to the right of the target frame
-		TargetFrameToT:ClearAllPoints()
-		TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 80, 0);
-		
-		--Move the FocusFrameToT Frame to the right of the Focus frame
-		FocusFrameToT:ClearAllPoints()
-		FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 80, 0);
-
-		self:UnregisterEvent("PLAYER_LOGIN")
-		
-	elseif ( event == "PARTY_MEMBERS_CHANGED" or event == "PLAYER_ENTERING_WORLD" ) then
-		--xanUI_UpdateRaidPositions()
-		
-	elseif ( event == "PLAYER_TARGET_CHANGED" ) then
-		 xanUI_UpdateFactionIcon("target", TargetFrame)
-	
-	elseif ( event == "RAID_ROSTER_UPDATE" ) then
-		--xanUI_UpdateRaidPositions()
 	end
+end
+
+function eventFrame:PLAYER_LOGIN()
+	--xanUI_UpdateRaidLocks()
+	
+	--create the castbars
+	-- if XSpellBar then
+		-- for i = 1,4 do
+			-- XSpellBar:New(getglobal("PartyMemberFrame"..i))
+		-- end
+	-- end 
+
+	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
+	TargetFrameSpellBar.showTradeSkills = true;
+
+	TargetFrameToT:ClearAllPoints()
+	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 80, 0);
+	
+	--Move the FocusFrameToT Frame to the right of the Focus frame
+	FocusFrameToT:ClearAllPoints()
+	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 80, 0);
+
+	eventFrame:UnregisterEvent("PLAYER_LOGIN")
+end
+
+local upt_throt  = 0
+
+eventFrame:HookScript("OnUpdate", function(self, elapsed)
+	--do some throttling
+	upt_throt = upt_throt + elapsed
+	if upt_throt < 3 then return end
+	upt_throt = 0
+			
+	checkPetBar()
 end)
 
+function eventFrame:PLAYER_TARGET_CHANGED()
+	xanUI_UpdateFactionIcon("target", TargetFrame)
+end
+
+------------------------------------------------
+------------------------------------------------
+------------------------------------------------
+
+-- function eventFrame:PARTY_MEMBERS_CHANGED()
+	-- xanUI_UpdateRaidPositions()
+	-- checkPetBar()
+-- end
+
+-- function eventFrame:PLAYER_ENTERING_WORLD()
+	-- xanUI_UpdateRaidPositions()
+	-- checkPetBar()
+-- end
+
+
+-- function eventFrame:PET_BAR_UPDATE()
+	-- checkPetBar()
+-- end
+
+-- function eventFrame:UNIT_PET(event, unitID)
+	-- if (unitID and unitID == "player") then
+		-- checkPetBar()
+	-- end
+-- end
+
+-- function eventFrame:UNIT_AURA(event, unitID)
+	-- if (unitID and unitID == "player") then
+		-- checkPetBar()
+	-- end
+-- end
+
+-- function eventFrame:UNIT_SPELLCAST_START(event, unitID)
+	-- if (unitID and unitID == "player") then
+		-- checkPetBar()
+	-- end
+-- end
+
+-- function eventFrame:UNIT_SPELLCAST_STOP(event, unitID)
+	-- if (unitID and unitID == "player") then
+		-- checkPetBar()
+	-- end
+-- end
+
+-- function eventFrame:UNIT_SPELLCAST_SUCCEEDED(event, unitID)
+	-- if (unitID and unitID == "player") then
+		-- checkPetBar()
+	-- end
+-- end
+
+-- function eventFrame:PLAYER_REGEN_DISABLED()
+	-- checkPetBar()
+-- end
+
+-- function eventFrame:PLAYER_REGEN_ENABLED()
+	-- checkPetBar()
+-- end

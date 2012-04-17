@@ -99,15 +99,15 @@ xanUI_CreateFactionIcon(TargetFrame);
 
 SLASH_XANUI1 = "/xanui"
 SlashCmdList["XANUI"] = function(arg)
-	if not XanUIDB then return nil; end
-	if XanUIDB["RaidLock"] == "yes" then
-		XanUIDB["RaidLock"] = "no"
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now unlocked.");
-	else
-		XanUIDB["RaidLock"] = "yes"
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now locked.");
-	end
-	xanUI_UpdateRaidLocks()
+	-- if not XanUIDB then return nil; end
+	-- if XanUIDB["RaidLock"] == "yes" then
+		-- XanUIDB["RaidLock"] = "no"
+		-- DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now unlocked.");
+	-- else
+		-- XanUIDB["RaidLock"] = "yes"
+		-- DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now locked.");
+	-- end
+	-- xanUI_UpdateRaidLocks()
 end
 
 function xanUI_UpdateRaidLocks()
@@ -369,14 +369,15 @@ function eventFrame:PLAYER_LOGIN()
 	-- end 
 
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
-	TargetFrameSpellBar.showTradeSkills = true;
+	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
 
+	--move the target or target frame ToT
 	TargetFrameToT:ClearAllPoints()
-	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 80, 0);
+	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 95, 0);
 	
 	--Move the FocusFrameToT Frame to the right of the Focus frame
 	FocusFrameToT:ClearAllPoints()
-	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 80, 0);
+	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
 
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end

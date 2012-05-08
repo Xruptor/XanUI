@@ -7,13 +7,10 @@
 ---COLOR BARS BY CLASS
 ----------------------------------------------------------------
 
-local   UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS = UnitIsPlayer, UnitIsConnected, UnitClass, RAID_CLASS_COLORS
-local _, class, c
-
 local function colour(statusbar, unit)
 	if UnitIsPlayer(unit) and UnitIsConnected(unit) and unit == statusbar.unit and UnitClass(unit) then
-		_, class = UnitClass(unit)
-		c = CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] or RAID_CLASS_COLORS[class]
+		local _, class = UnitClass(unit)
+		local c = CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] or RAID_CLASS_COLORS[class]
 		statusbar:SetStatusBarColor(c.r, c.g, c.b)
 	end
 end

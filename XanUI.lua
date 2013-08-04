@@ -57,7 +57,7 @@ end
 function xanUI_UpdateFactionIcon(unit, frame)
 	if not unit then return nil; end
 	if not frame then return nil; end
-	
+
 	if frame == TargetFrame then
 		--we have to move the target raid icon identifier to the right a bit (skull, diamond, star, etc..)
 		TargetFrameTextureFrameRaidTargetIcon:SetPoint("CENTER", TargetFrame, "TOPRIGHT", -82, -74);
@@ -69,7 +69,7 @@ function xanUI_UpdateFactionIcon(unit, frame)
 
 		--don't show the faction icon if the unit is already in PVP.  The PVP icon is a bigger notifier of what
 		--faction a unit is... duh!
-		if( UnitFactionGroup(unit) and not TargetFrameTextureFramePVPIcon:IsVisible()) then
+		if( UnitFactionGroup(unit) and UnitFactionGroup(unit):lower() ~= "neutral" and not TargetFrameTextureFramePVPIcon:IsVisible()) then
 			getglobal(frame:GetName().."FactionIcon"):SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", UnitFactionGroup(unit)))
 			getglobal(frame:GetName().."Faction"):Show()
 		else
@@ -77,7 +77,7 @@ function xanUI_UpdateFactionIcon(unit, frame)
 		end	
 		
 	else
-		if( UnitFactionGroup(unit) ) then
+		if( UnitFactionGroup(unit) and UnitFactionGroup(unit):lower() ~= "neutral"	) then
 			getglobal(frame:GetName().."FactionIcon"):SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", UnitFactionGroup(unit)))
 			getglobal(frame:GetName().."Faction"):Show()
 		else
@@ -94,8 +94,8 @@ xanUI_CreateFactionIcon(TargetFrame);
 --Enable a toggle that allows the default blizzard raid UI panels to lock/unlock
 ----------------------------------------------------------------
 
-SLASH_XANUI1 = "/xanui"
-SlashCmdList["XANUI"] = function(arg)
+-- SLASH_XANUI1 = "/xanui"
+-- SlashCmdList["XANUI"] = function(arg)
 	-- if not XanUIDB then return nil; end
 	-- if XanUIDB["RaidLock"] == "yes" then
 		-- XanUIDB["RaidLock"] = "no"
@@ -105,25 +105,25 @@ SlashCmdList["XANUI"] = function(arg)
 		-- DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now locked.");
 	-- end
 	-- xanUI_UpdateRaidLocks()
-end
+-- end
 
-function xanUI_UpdateRaidLocks()
-	if not XanUIDB["RaidLock"] then XanUIDB["RaidLock"] = "yes" end
+-- function xanUI_UpdateRaidLocks()
+	-- if not XanUIDB["RaidLock"] then XanUIDB["RaidLock"] = "yes" end
 	
-	--lock the frames
-	if XanUIDB["RaidLock"] == "yes" then
-		for i=1, 8 do
-			local f=_G["RaidPullout"..i]
-			if f then f:SetScript("OnDragStart", function() end) end 
-		end
-	else
-	--unlock the frames
-		for i=1, 8 do
-			local f=_G["RaidPullout"..i] 
-			if f then f:SetScript("OnDragStart", function(self) self:SetMovable(true) self:StartMoving() end) end
-		end
-	end
-end
+	----lock the frames
+	-- if XanUIDB["RaidLock"] == "yes" then
+		-- for i=1, 8 do
+			-- local f=_G["RaidPullout"..i]
+			-- if f then f:SetScript("OnDragStart", function() end) end 
+		-- end
+	-- else
+	----unlock the frames
+		-- for i=1, 8 do
+			-- local f=_G["RaidPullout"..i] 
+			-- if f then f:SetScript("OnDragStart", function(self) self:SetMovable(true) self:StartMoving() end) end
+		-- end
+	-- end
+-- end
 
 ----------------------------------------------------------------
 --RAID POSITION UPDATE
@@ -133,47 +133,47 @@ local function framesort(a, b)
 	return a.label:GetText() < b.label:GetText()
 end
 
-function xanUI_UpdateRaidPositions()
-	--number of pullsout per column
-	local fpr = 3
+-- function xanUI_UpdateRaidPositions()
+	----number of pullsout per column
+	-- local fpr = 3
 	
-	if NUM_RAID_PULLOUT_FRAMES and not InCombatLockdown() then
-		local frm = {}
-		local r = 1
-		local n = 1
+	-- if NUM_RAID_PULLOUT_FRAMES and not InCombatLockdown() then
+		-- local frm = {}
+		-- local r = 1
+		-- local n = 1
 
-		for i = 1, NUM_RAID_PULLOUT_FRAMES do
-			local f = getglobal("RaidPullout" .. i)
-			local b = getglobal("RaidPullout" .. i .. "MenuBackdrop")
+		-- for i = 1, NUM_RAID_PULLOUT_FRAMES do
+			-- local f = getglobal("RaidPullout" .. i)
+			-- local b = getglobal("RaidPullout" .. i .. "MenuBackdrop")
 			
-			--hide the background
-			b:Hide()
+			----hide the background
+			-- b:Hide()
 			
-			if f and f:IsShown() and f:IsVisible() and f.label and f.label:GetText() then
-				frm[n] = f
-				n = n + 1
-			end
-		end
+			-- if f and f:IsShown() and f:IsVisible() and f.label and f.label:GetText() then
+				-- frm[n] = f
+				-- n = n + 1
+			-- end
+		-- end
 
-		table.sort(frm, framesort)
+		-- table.sort(frm, framesort)
 
-		for i = 1, #frm do
+		-- for i = 1, #frm do
 		
-			frm[i]:ClearAllPoints()
-			frm[i]:Show()
+			-- frm[i]:ClearAllPoints()
+			-- frm[i]:Show()
 			
-			if i == 1 then
-				frm[i]:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 25, (-UIParent:GetHeight() / 6.5)-5)
-			elseif r == fpr then
-				frm[i]:SetPoint("TOPLEFT", frm[i - fpr], "TOPRIGHT", 25, 0)
-				r = 1
-			else
-				frm[i]:SetPoint("TOPLEFT", frm[i - 1], "BOTTOMLEFT", 0, -13)
-				r = r + 1
-			end
-		end
-	end
-end
+			-- if i == 1 then
+				-- frm[i]:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 25, (-UIParent:GetHeight() / 6.5)-5)
+			-- elseif r == fpr then
+				-- frm[i]:SetPoint("TOPLEFT", frm[i - fpr], "TOPRIGHT", 25, 0)
+				-- r = 1
+			-- else
+				-- frm[i]:SetPoint("TOPLEFT", frm[i - 1], "BOTTOMLEFT", 0, -13)
+				-- r = r + 1
+			-- end
+		-- end
+	-- end
+-- end
 
 
 ----------------------------------------------------------------
@@ -370,7 +370,7 @@ function eventFrame:PLAYER_LOGIN()
 
 	--move the target or target frame ToT
 	TargetFrameToT:ClearAllPoints()
-	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 95, 0);
+	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 120, 0);
 	
 	--Move the FocusFrameToT Frame to the right of the Focus frame
 	FocusFrameToT:ClearAllPoints()

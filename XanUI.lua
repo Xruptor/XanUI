@@ -107,6 +107,7 @@ xanUI_CreateFactionIcon(TargetFrame);
 	-- xanUI_UpdateRaidLocks()
 -- end
 
+
 -- function xanUI_UpdateRaidLocks()
 	-- if not XanUIDB["RaidLock"] then XanUIDB["RaidLock"] = "yes" end
 	
@@ -376,6 +377,14 @@ function eventFrame:PLAYER_LOGIN()
 	FocusFrameToT:ClearAllPoints()
 	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
 
+	--hide the stupid blizzard boss frames
+	for i = 1, 4 do
+		local frame = _G["Boss"..i.."TargetFrame"]
+		frame:UnregisterAllEvents()
+		frame:Hide()
+		frame.Show = function () end
+	end
+	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 

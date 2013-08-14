@@ -130,9 +130,9 @@ xanUI_CreateFactionIcon(TargetFrame);
 --RAID POSITION UPDATE
 ----------------------------------------------------------------
 
-local function framesort(a, b)
-	return a.label:GetText() < b.label:GetText()
-end
+-- local function framesort(a, b)
+	-- return a.label:GetText() < b.label:GetText()
+-- end
 
 -- function xanUI_UpdateRaidPositions()
 	----number of pullsout per column
@@ -182,6 +182,20 @@ end
 --MAKE SURE YOU ENABLED THE TEXT STATUS IN THE BLIZZARD -> OPTIONS -> STATUS TEXT
 ----------------------------------------------------------------
 
+function xanUI_smallNum(sNum)
+	if not sNum then return end
+
+	sNum = tonumber(sNum)
+
+	if sNum < 1000 then
+		return sNum
+	elseif sNum >= 1000 then
+		return string.format("%.1fK", sNum/1000)
+	else	
+		return sNum
+	end
+end
+
 hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 
 	if self and self:GetParent() then
@@ -207,7 +221,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
+						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(value.." / "..valueMax);
 						textString:Show();
@@ -233,7 +247,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
+						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
@@ -255,7 +269,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
+						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
@@ -267,7 +281,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.ceil((value / valueMax) * 100)) .. " %";
+						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
 						textString:SetText(pervalue);
 						textString:Show();
@@ -278,19 +292,6 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 	end
 end)
 
-function xanUI_smallNum(sNum)
-	if not sNum then return end
-
-	sNum = tonumber(sNum)
-
-	if sNum < 1000 then
-		return sNum
-	elseif sNum >= 1000 then
-		return string.format("%.1fK", sNum/1000)
-	else	
-		return sNum
-	end
-end
 
 --[[------------------------
 	Blizzard Tradeskills Castbar
@@ -334,7 +335,6 @@ local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
 eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
-eventFrame:RegisterEvent("ADDON_LOADED");
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
 --we need to fix a problem where sometimes the pet bar isn't showing up!
@@ -349,14 +349,40 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 -- eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 -- eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-function eventFrame:ADDON_LOADED(event, addonName)
-	if addonName == "xanUI" then
-		if not XanUIDB then XanUIDB = {} end
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: Loaded /xanui");
-	end
-end
 
 function eventFrame:PLAYER_LOGIN()
+	if not XanUIDB then XanUIDB = {} end
+	if not XanUIDB["hidebossframes"] then XanUIDB["hidebossframes"] = false end
+
+	local ver = GetAddOnMetadata("xanUI","Version") or 0
+		
+	SLASH_XANUI1 = "/xanui"
+	SLASH_XANUI2 = "/xui"
+	SlashCmdList["XANUI"] = function(msg)
+	
+		local a,b,c=strfind(msg, "(%S+)"); --contiguous string of non-space characters
+		
+		if a then
+			if c and c:lower() == "hidebossframes" then
+				if XanUIDB.hidebossframes then
+					XanUIDB.hidebossframes = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33OFF|r]")
+				else
+					XanUIDB.hidebossframes = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33ON|r]")
+				end
+				return true
+			end
+		end
+
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI")
+		DEFAULT_CHAT_FRAME:AddMessage("/xanui hidebossframes - Toggles Hiding Blizzard Boss Health Frames On or Off")
+
+	end
+	
+	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFFDF2B2B"..ver.."|r]   /xanui, /xui")
+	
+
 	--xanUI_UpdateRaidLocks()
 	
 	--create the castbars
@@ -378,11 +404,13 @@ function eventFrame:PLAYER_LOGIN()
 	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
 
 	--hide the stupid blizzard boss frames
-	for i = 1, 4 do
-		local frame = _G["Boss"..i.."TargetFrame"]
-		frame:UnregisterAllEvents()
-		frame:Hide()
-		frame.Show = function () end
+	if XanUIDB.hidebossframes == true then
+		for i = 1, 4 do
+			local frame = _G["Boss"..i.."TargetFrame"]
+			frame:UnregisterAllEvents()
+			frame:Hide()
+			frame.Show = function () end
+		end
 	end
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")

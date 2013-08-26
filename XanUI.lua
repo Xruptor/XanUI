@@ -366,10 +366,16 @@ function eventFrame:PLAYER_LOGIN()
 			if c and c:lower() == "hidebossframes" then
 				if XanUIDB.hidebossframes then
 					XanUIDB.hidebossframes = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33OFF|r]")
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33ON|r]")
 				else
 					XanUIDB.hidebossframes = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33ON|r]")
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33OFF|r]")
+					for i = 1, 4 do
+						local frame = _G["Boss"..i.."TargetFrame"]
+						frame:UnregisterAllEvents()
+						frame:Hide()
+						frame.Show = function () end
+					end
 				end
 				return true
 			end
@@ -404,7 +410,7 @@ function eventFrame:PLAYER_LOGIN()
 	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
 
 	--hide the stupid blizzard boss frames
-	if XanUIDB.hidebossframes == true then
+	if XanUIDB.hidebossframes then
 		for i = 1, 4 do
 			local frame = _G["Boss"..i.."TargetFrame"]
 			frame:UnregisterAllEvents()
@@ -424,7 +430,17 @@ eventFrame:HookScript("OnUpdate", function(self, elapsed)
 	if upt_throt < 3 then return end
 	upt_throt = 0
 			
-	checkPetBar()
+	--because hunters start off with a fake pet that they really can't dismiss or control, we can ignore the pet show function
+	--until they learn tame pet
+	if select(2, UnitClass("player")) == "HUNTER" then
+		--check for tame pet
+		if IsSpellKnown(1515) then
+			checkPetBar()
+		end
+	else
+		checkPetBar()
+	end
+	
 end)
 
 function eventFrame:PLAYER_TARGET_CHANGED()

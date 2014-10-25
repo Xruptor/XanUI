@@ -27,6 +27,12 @@ addon:SetScript("OnEvent", function()
 	colour(sb, "mouseover")
 end)
 
+--stop the stupid text from displaying on hover over
+--blizzard changed this with WOD
+hooksecurefunc("ShowTextStatusBarText", function(self)
+	HideTextStatusBarText(self)
+end)
+
 
 ----------------------------------------------------------------
 ---FACTION INDICATORS (TARGET ONLY)
@@ -90,98 +96,6 @@ end
 xanUI_CreateFactionIcon(TargetFrame);
 	
 
-----------------------------------------------------------------
---Enable a toggle that allows the default blizzard raid UI panels to lock/unlock
-----------------------------------------------------------------
-
--- SLASH_XANUI1 = "/xanui"
--- SlashCmdList["XANUI"] = function(arg)
-	-- if not XanUIDB then return nil; end
-	-- if XanUIDB["RaidLock"] == "yes" then
-		-- XanUIDB["RaidLock"] = "no"
-		-- DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now unlocked.");
-	-- else
-		-- XanUIDB["RaidLock"] = "yes"
-		-- DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Raid Pullouts are now locked.");
-	-- end
-	-- xanUI_UpdateRaidLocks()
--- end
-
-
--- function xanUI_UpdateRaidLocks()
-	-- if not XanUIDB["RaidLock"] then XanUIDB["RaidLock"] = "yes" end
-	
-	----lock the frames
-	-- if XanUIDB["RaidLock"] == "yes" then
-		-- for i=1, 8 do
-			-- local f=_G["RaidPullout"..i]
-			-- if f then f:SetScript("OnDragStart", function() end) end 
-		-- end
-	-- else
-	----unlock the frames
-		-- for i=1, 8 do
-			-- local f=_G["RaidPullout"..i] 
-			-- if f then f:SetScript("OnDragStart", function(self) self:SetMovable(true) self:StartMoving() end) end
-		-- end
-	-- end
--- end
-
-----------------------------------------------------------------
---RAID POSITION UPDATE
-----------------------------------------------------------------
-
--- local function framesort(a, b)
-	-- return a.label:GetText() < b.label:GetText()
--- end
-
--- function xanUI_UpdateRaidPositions()
-	----number of pullsout per column
-	-- local fpr = 3
-	
-	-- if NUM_RAID_PULLOUT_FRAMES and not InCombatLockdown() then
-		-- local frm = {}
-		-- local r = 1
-		-- local n = 1
-
-		-- for i = 1, NUM_RAID_PULLOUT_FRAMES do
-			-- local f = getglobal("RaidPullout" .. i)
-			-- local b = getglobal("RaidPullout" .. i .. "MenuBackdrop")
-			
-			----hide the background
-			-- b:Hide()
-			
-			-- if f and f:IsShown() and f:IsVisible() and f.label and f.label:GetText() then
-				-- frm[n] = f
-				-- n = n + 1
-			-- end
-		-- end
-
-		-- table.sort(frm, framesort)
-
-		-- for i = 1, #frm do
-		
-			-- frm[i]:ClearAllPoints()
-			-- frm[i]:Show()
-			
-			-- if i == 1 then
-				-- frm[i]:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 25, (-UIParent:GetHeight() / 6.5)-5)
-			-- elseif r == fpr then
-				-- frm[i]:SetPoint("TOPLEFT", frm[i - fpr], "TOPRIGHT", 25, 0)
-				-- r = 1
-			-- else
-				-- frm[i]:SetPoint("TOPLEFT", frm[i - 1], "BOTTOMLEFT", 0, -13)
-				-- r = r + 1
-			-- end
-		-- end
-	-- end
--- end
-
-
-----------------------------------------------------------------
---Add percents and actual health/mana values to specific frames
---MAKE SURE YOU ENABLED THE TEXT STATUS IN THE BLIZZARD -> OPTIONS -> STATUS TEXT
-----------------------------------------------------------------
-
 function xanUI_smallNum(sNum)
 	if not sNum then return end
 
@@ -222,13 +136,13 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(value.." / "..valueMax);
 						textString:Show();
 
 						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 							getglobal(parentName.."PercentStr"):Show()
@@ -248,13 +162,13 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
 						
 						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 							getglobal(parentName.."PercentStr"):Show()
@@ -270,7 +184,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
 					end
@@ -282,7 +196,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 10, "OUTLINE");
+						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(pervalue);
 						textString:Show();
 					end

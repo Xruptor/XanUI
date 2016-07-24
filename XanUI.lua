@@ -7,6 +7,11 @@
 ---COLOR BARS BY CLASS
 ----------------------------------------------------------------
 
+local debugf = tekDebug and tekDebug:GetFrame("xanUI")
+local function Debug(...)
+    if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
+end
+
 local function colour(statusbar, unit)
 	if UnitIsPlayer(unit) and UnitIsConnected(unit) and unit == statusbar.unit and UnitClass(unit) then
 		local _, class = UnitClass(unit)
@@ -29,9 +34,9 @@ end)
 
 --stop the stupid text from displaying on hover over
 --blizzard changed this with WOD
-hooksecurefunc("ShowTextStatusBarText", function(self)
-	HideTextStatusBarText(self)
-end)
+-- hooksecurefunc("ShowTextStatusBarText", function(self)
+	-- HideTextStatusBarText(self)
+-- end)
 
 
 ----------------------------------------------------------------
@@ -110,6 +115,15 @@ function xanUI_smallNum(sNum)
 	end
 end
 
+--make sure to set Status Text to Numeric Values in Interface Options for this to work
+--"PERCENT" and "NUMERIC"
+--GetCVarDefault("statusTextDisplay") -> "NUMERIC"
+--GetCVarDefault("statusText") -> "0"
+
+--force Numeric for healthbar fix
+SetCVar("statusTextDisplay","NUMERIC")
+--InterfaceOptionsStatusTextPanelDisplayDropDown:SetValue("NUMERIC")
+
 hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 
 	if self and self:GetParent() then
@@ -125,56 +139,45 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 				local valueMin, valueMax = self:GetMinMaxValues();
 				
 				--display according to frame name
-				if parentName == "PlayerFrame" then
+				if parentName == "PlayerFrame" or parentName == "TargetFrame" then
 					if UnitIsDeadOrGhost("player") then
 						if getglobal(parentName.."PercentStr") then
 							getglobal(parentName.."PercentStr"):SetText("0%")
 						end
-						textString:SetText("");
-						textString:Hide();
+						--textString:SetText("");
+						--textString:Hide();
 						return
 					end
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
+						
+						--change the health/mana/power text to something more readable with better font lol
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-						textString:SetText(value.." / "..valueMax);
+						if parentName == "PlayerFrame" then
+							textString:SetText(value.." / "..valueMax);
+						else
+							textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
+						end
 						textString:Show();
 
 						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
 							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
+							if parentName == "PlayerFrame" then
+								getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
+							else
+								getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
+							end							
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 							getglobal(parentName.."PercentStr"):Show()
 						elseif string.find(self:GetName(), "HealthBar") then
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 						end
 						
-					end
-				elseif parentName == "TargetFrame" then
-					if UnitIsDeadOrGhost("target") then
-						if getglobal(parentName.."PercentStr") then
-							getglobal(parentName.."PercentStr"):SetText("0%")
-						end
-						textString:SetText("");
-						textString:Hide();
-						return
-					end
-					if valueMax > 0 then
-						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
-						textString:Show();
-						
-						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
-							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
-							getglobal(parentName.."PercentStr"):SetText(pervalue)
+						if not getglobal(parentName.."PercentStr"):IsVisible() then
 							getglobal(parentName.."PercentStr"):Show()
-						elseif string.find(self:GetName(), "HealthBar") then
-							getglobal(parentName.."PercentStr"):SetText(pervalue)
 						end
+						
 					end
 				elseif parentName == "FocusFrame" then
 					if UnitIsDeadOrGhost("focus") then
@@ -183,7 +186,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
+						--change the health/mana/power text to something more readable with better font lol
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
 						textString:Show();
@@ -195,7 +198,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						return
 					end
 					if valueMax > 0 then
-						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
+						--change the health/mana/power text to something more readable with better font lol
 						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
 						textString:SetText(pervalue);
 						textString:Show();
@@ -233,13 +236,13 @@ end)
 	This will fix the issues where the damn pet bar isn't showing up sometimes
 --------------------------]]
 
-local function checkPetBar()
-	if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
-		if not UnitInVehicle("player") or not UnitHasVehicleUI("player") then
-			PetActionBarFrame:Show()
-		end
-	end
-end
+-- local function checkPetBar()
+	-- if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
+		-- if not UnitInVehicle("player") or not UnitHasVehicleUI("player") then
+			-- PetActionBarFrame:Show()
+		-- end
+	-- end
+-- end
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -336,26 +339,26 @@ function eventFrame:PLAYER_LOGIN()
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
-local upt_throt  = 0
+-- local upt_throt  = 0
 
-eventFrame:HookScript("OnUpdate", function(self, elapsed)
+-- eventFrame:HookScript("OnUpdate", function(self, elapsed)
 	--do some throttling
-	upt_throt = upt_throt + elapsed
-	if upt_throt < 3 then return end
-	upt_throt = 0
+	-- upt_throt = upt_throt + elapsed
+	-- if upt_throt < 3 then return end
+	-- upt_throt = 0
 			
 	--because hunters start off with a fake pet that they really can't dismiss or control, we can ignore the pet show function
 	--until they learn tame pet
-	if select(2, UnitClass("player")) == "HUNTER" then
+	-- if select(2, UnitClass("player")) == "HUNTER" then
 		--check for tame pet
-		if IsSpellKnown(1515) then
-			checkPetBar()
-		end
-	else
-		checkPetBar()
-	end
+		-- if IsSpellKnown(1515) then
+			-- checkPetBar()
+		-- end
+	-- else
+		-- checkPetBar()
+	-- end
 	
-end)
+-- end)
 
 function eventFrame:PLAYER_TARGET_CHANGED()
 	xanUI_UpdateFactionIcon("target", TargetFrame)

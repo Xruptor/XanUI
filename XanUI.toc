@@ -1,7 +1,7 @@
-## Interface: 60000
+## Interface: 70000
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  2.6
+## Version:  2.7
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB
 

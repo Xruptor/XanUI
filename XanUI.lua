@@ -174,7 +174,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 							getglobal(parentName.."PercentStr"):SetText(pervalue)
 						end
 						
-						if not getglobal(parentName.."PercentStr"):IsVisible() then
+						if getglobal(parentName.."PercentStr") and not getglobal(parentName.."PercentStr"):IsVisible() then
 							getglobal(parentName.."PercentStr"):Show()
 						end
 						

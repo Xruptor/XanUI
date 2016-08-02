@@ -40,6 +40,109 @@ end)
 
 
 ----------------------------------------------------------------
+---ADD OPTION TO MAP TO HIDE TREASURES
+----------------------------------------------------------------
+
+local function click(self)
+	local checked = self.checked
+	PlaySound(checked and "igMainMenuOptionCheckBoxOn" or "igMainMenuOptionCheckBoxOff")
+	ToggleTreasuresSettings = checked
+	WorldMapFrame_Update()
+end
+
+hooksecurefunc("WorldMapTrackingOptionsDropDown_Initialize",function(self,level,menuList)
+	if level==1 then
+		-- if setting is nil (not defined) then define it to true to check by default
+		if ToggleTreasuresSettings==nil then
+			ToggleTreasuresSettings = true
+		end
+		-- add the "Show Treasures" option
+		local info = UIDropDownMenu_CreateInfo()
+		info.text = "Show Treasures"
+		info.func = click
+		info.checked = ToggleTreasuresSettings and true
+		info.isNotRadio = true
+		info.keepShownOnClick = 1
+		UIDropDownMenu_AddButton(info)
+	end
+end)
+-- need to re-initialize to pick up our hooked version of the function
+UIDropDownMenu_Initialize(WorldMapFrameDropDown, WorldMapTrackingOptionsDropDown_Initialize, "MENU")
+
+-- the heart of the addon; if ToggleTreasuresSettings is unchecked, then hide all "197" POIs
+hooksecurefunc("WorldMapFrame_Update",function()
+	if not ToggleTreasuresSettings then
+		for i=1,GetNumMapLandmarks() do
+			if select(4,GetMapLandmarkInfo(i))==197 then
+				_G["WorldMapFramePOI"..i]:Hide()
+			end
+		end
+	end
+end)
+
+
+----------------------------------------------------------------
+---ADD Missing stats to the character panel
+----------------------------------------------------------------
+
+--don't really want to show all stats but use this as a guideline
+function xanUI_ShowAllStats()
+	PAPERDOLL_STATCATEGORIES= {
+		[1] = {
+			categoryFrame = "AttributesCategory",
+			stats = {
+				[1] = { stat = "HEALTH" },
+				[2] = { stat = "POWER" },
+				[3] = { stat = "ALTERNATEMANA" },
+				[5] = { stat = "ARMOR" },
+				[6] = { stat = "STRENGTH" },
+				[7] = { stat = "AGILITY" },
+				[8] = { stat = "INTELLECT" },
+				[9] = { stat = "STAMINA" },
+				[10] = { stat = "ATTACK_DAMAGE" },
+				[11] = { stat = "ATTACK_AP" },
+				[12] = { stat = "ATTACK_ATTACKSPEED" },
+				[13] = { stat = "SPELLPOWER" },
+				[14] = { stat = "MANAREGEN", hideAt = 0 },
+				[15] = { stat = "ENERGY_REGEN", hideAt = 0 },
+				[16] = { stat = "RUNE_REGEN", hideAt = 0 },
+				[17] = { stat = "FOCUS_REGEN", hideAt = 0 },
+				[18] = { stat = "MOVESPEED" },
+				[19] = { stat = "DURABILITY" },
+				[20] = { stat = "REPAIRTOTAL" },
+				[21] = { stat = "ITEMLEVEL" },
+			},
+		},
+		[2] = {
+			categoryFrame = "EnhancementsCategory",
+			stats = {
+				[1] = { stat = "CRITCHANCE" },
+				[2] = { stat = "HASTE" },
+				[3] = { stat = "VERSATILITY" },
+				[4] = { stat = "MASTERY" },
+				[5] = { stat = "LIFESTEAL" },
+				[6] = { stat = "AVOIDANCE" },
+				[7] = { stat = "DODGE" },
+				[8] = { stat = "PARRY" },
+				[9] = { stat = "BLOCK" },
+			},
+		},
+	};
+	PaperDollFrame_UpdateStats();
+end
+
+
+function xanUI_InsertStats()
+	
+	--1 is the top category with intellect and such, 2 is the second category
+	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" });
+	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_AP" });
+
+end
+
+
+
+----------------------------------------------------------------
 ---FACTION INDICATORS (TARGET ONLY)
 ----------------------------------------------------------------
 
@@ -335,6 +438,9 @@ function eventFrame:PLAYER_LOGIN()
 			frame.Show = function () end
 		end
 	end
+	
+	--edit the character panel stats
+	xanUI_InsertStats()
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end

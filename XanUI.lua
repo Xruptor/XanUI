@@ -251,6 +251,13 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 						--textString:Hide();
 						return
 					end
+					
+					--don't show if they are dead
+					if parentName == "TargetFrame" and UnitIsDeadOrGhost("target") then
+						textString:SetText("")
+						textString:Hide();
+					end
+					
 					if valueMax > 0 then
 						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
 						

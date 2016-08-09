@@ -237,84 +237,71 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 			local parentName = frame:GetName();
 			local textString = self.TextString;
 			
-			if textString then
+			--display according to frame name
+			if parentName == "PlayerFrame" or parentName == "TargetFrame" or parentName == "TargetFrameToT" then
+			
 				local value = self:GetValue();
 				local valueMin, valueMax = self:GetMinMaxValues();
-				
-				--display according to frame name
-				if parentName == "PlayerFrame" or parentName == "TargetFrame" then
-					if UnitIsDeadOrGhost("player") then
+			
+				--check player death text
+				if parentName == "PlayerFrame" then
+					if UnitIsUnconscious("player") or UnitIsDeadOrGhost("player") then
 						if getglobal(parentName.."PercentStr") then
-							getglobal(parentName.."PercentStr"):SetText("0%")
+							getglobal(parentName.."PercentStr"):SetText("Dead")
 						end
-						--textString:SetText("");
-						--textString:Hide();
 						return
 					end
-					
-					--don't show if they are dead
-					if parentName == "TargetFrame" and UnitIsDeadOrGhost("target") then
-						textString:SetText("")
-						textString:Hide();
-					end
-					
-					if valueMax > 0 then
-						local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
-						
-						--change the health/mana/power text to something more readable with better font lol
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-						if parentName == "PlayerFrame" then
-							textString:SetText(value.." / "..valueMax);
-						else
-							textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
+				end
+				--check target
+				if parentName == "TargetFrame" then
+					if UnitIsUnconscious("target") or UnitIsDeadOrGhost("target") then
+						if getglobal(parentName.."PercentStr") then
+							getglobal(parentName.."PercentStr"):SetText("Dead")
 						end
-						textString:Show();
+						TargetFrame.healthbar.LeftText:Hide()
+						TargetFrame.healthbar.RightText:Hide()							
+						return
+					end
+				end
+				--check target of target
+				if parentName == "TargetFrameToT" then
+					if UnitIsUnconscious("TargetFrameToT") or UnitIsDeadOrGhost("TargetFrameToT") then
+						if getglobal(parentName.."PercentStr") then
+							getglobal(parentName.."PercentStr"):SetText("Dead")
+						end						
+						return
+					end
+				end
+				
 
-						if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
-							getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
-							getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-							if parentName == "PlayerFrame" then
-								getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
-							else
-								getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
-							end							
-							getglobal(parentName.."PercentStr"):SetText(pervalue)
-							getglobal(parentName.."PercentStr"):Show()
-						elseif string.find(self:GetName(), "HealthBar") then
-							getglobal(parentName.."PercentStr"):SetText(pervalue)
-						end
-						
-						if getglobal(parentName.."PercentStr") and not getglobal(parentName.."PercentStr"):IsVisible() then
-							getglobal(parentName.."PercentStr"):Show()
-						end
-						
+				if valueMax > 0 then
+					local pervalue = tostring(math.floor((value / valueMax) * 100)) .. " %";
+
+					if not getglobal(parentName.."PercentStr") and string.find(self:GetName(), "HealthBar") then
+						getglobal(parentName):CreateFontString("$parentPercentStr", "OVERLAY")
+						getglobal(parentName.."PercentStr"):SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
+						if parentName == "PlayerFrame" then
+							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPRIGHT", -20, -12)
+						elseif parentName == "TargetFrame" then
+							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 20, -12)
+						else
+							--target of target
+							getglobal(parentName.."PercentStr"):SetPoint("CENTER", parentName, "TOPLEFT", 65, -8)
+						end							
+						getglobal(parentName.."PercentStr"):SetText(pervalue)
+						getglobal(parentName.."PercentStr"):Show()
+					elseif string.find(self:GetName(), "HealthBar") then
+						getglobal(parentName.."PercentStr"):SetText(pervalue)
 					end
-				elseif parentName == "FocusFrame" then
-					if UnitIsDeadOrGhost("focus") then
-						textString:SetText("");
-						textString:Hide();
-						return
+					
+					if getglobal(parentName.."PercentStr") and not getglobal(parentName.."PercentStr"):IsVisible() then
+						getglobal(parentName.."PercentStr"):Show()
 					end
-					if valueMax > 0 then
-						--change the health/mana/power text to something more readable with better font lol
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-						textString:SetText(xanUI_smallNum(value).." / "..xanUI_smallNum(valueMax));
-						textString:Show();
-					end
-				elseif parentName == "PetFrame" then
-					if UnitIsDeadOrGhost("pet") then
-						textString:SetText("");
-						textString:Hide();
-						return
-					end
-					if valueMax > 0 then
-						--change the health/mana/power text to something more readable with better font lol
-						textString:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-						textString:SetText(pervalue);
-						textString:Show();
-					end
-				end	
-			end
+					
+				end
+
+			end	
+			
 		end
 	end
 end)
@@ -347,7 +334,7 @@ end)
 --------------------------]]
 
 -- local function checkPetBar()
-	-- if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
+	-- if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsUnconscious("pet") then
 		-- if not UnitInVehicle("player") or not UnitHasVehicleUI("player") then
 			-- PetActionBarFrame:Show()
 		-- end

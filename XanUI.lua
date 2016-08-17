@@ -161,6 +161,8 @@ function xanUI_CreateFactionIcon(frame)
 	
 	if frame == TargetFrame then
 		f:SetPoint("CENTER", 67, 24)
+	elseif frame == TargetFrameToT then
+		f:SetPoint("CENTER", -35, 5)
 	else
 		f:SetPoint("CENTER", -6, 10)
 	end
@@ -190,6 +192,13 @@ function xanUI_UpdateFactionIcon(unit, frame)
 			getglobal(frame:GetName().."Faction"):Hide()
 		end	
 		
+	elseif frame == TargetFrameToT then
+		if( UnitFactionGroup(unit) and UnitFactionGroup(unit):lower() ~= "neutral"	) then
+			getglobal(frame:GetName().."FactionIcon"):SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", UnitFactionGroup(unit)))
+			getglobal(frame:GetName().."Faction"):Show()
+		else
+			getglobal(frame:GetName().."Faction"):Hide()
+		end		
 	else
 		if( UnitFactionGroup(unit) and UnitFactionGroup(unit):lower() ~= "neutral"	) then
 			getglobal(frame:GetName().."FactionIcon"):SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", UnitFactionGroup(unit)))
@@ -202,7 +211,10 @@ function xanUI_UpdateFactionIcon(unit, frame)
 end
 
 xanUI_CreateFactionIcon(TargetFrame);
-	
+xanUI_CreateFactionIcon(TargetFrameToT)
+
+----------------------------------------------------------------
+----------------------------------------------------------------
 
 function xanUI_smallNum(sNum)
 	if not sNum then return end
@@ -265,7 +277,7 @@ hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 				end
 				--check target of target
 				if parentName == "TargetFrameToT" then
-					if UnitIsUnconscious("TargetFrameToT") or UnitIsDeadOrGhost("TargetFrameToT") then
+					if UnitIsUnconscious("targettarget") or UnitIsDeadOrGhost("targettarget") then
 						if getglobal(parentName.."PercentStr") then
 							getglobal(parentName.."PercentStr"):SetText("Dead")
 						end						
@@ -446,6 +458,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then r
 
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("UNIT_TARGET")
 
 --we need to fix a problem where sometimes the pet bar isn't showing up!
 -- eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
@@ -559,6 +572,33 @@ end
 function eventFrame:PLAYER_TARGET_CHANGED()
 	xanUI_UpdateFactionIcon("target", TargetFrame)
 end
+
+function eventFrame:UNIT_TARGET(self, unitid)
+	--update target of target because PLAYER_TARGET_CHANGED doesn't always work
+	if UnitExists("targettarget") then
+		xanUI_UpdateFactionIcon("targettarget", TargetFrameToT)
+	end
+	
+end
+
+----------------------------------------------------------------
+---Sell Junk at Vendors
+----------------------------------------------------------------
+eventFrame:RegisterEvent("MERCHANT_SHOW")
+
+function eventFrame:MERCHANT_SHOW()
+	for bag=0,4 do
+		for slot=0,GetContainerNumSlots(bag) do
+			local link = GetContainerItemLink(bag, slot)
+			if link and select(3, GetItemInfo(link)) == 0 then
+				ShowMerchantSellCursor(1)
+				UseContainerItem(bag, slot)
+			end
+		end
+	end
+end
+
+if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end
 
 ------------------------------------------------
 ------------------------------------------------

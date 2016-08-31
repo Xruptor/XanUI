@@ -81,6 +81,9 @@ hooksecurefunc("WorldMapFrame_Update",function()
 end)
 
 
+-- Always show missing transmogs in tooltips
+C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
+
 ----------------------------------------------------------------
 ---ADD Missing stats to the character panel
 ----------------------------------------------------------------
@@ -137,6 +140,7 @@ function xanUI_InsertStats()
 	--1 is the top category with intellect and such, 2 is the second category
 	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" });
 	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_AP" });
+	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "SPELLPOWER" });
 
 end
 
@@ -525,8 +529,10 @@ function eventFrame:PLAYER_LOGIN()
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
 
 	--move the target or target frame ToT
+	--some bosses have these special charge bars to the right of their frame
+	--so lets put the TOT below it and to the right slightly
 	TargetFrameToT:ClearAllPoints()
-	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 120, 0);
+	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 100, -45);
 	
 	--Move the FocusFrameToT Frame to the right of the Focus frame
 	FocusFrameToT:ClearAllPoints()

@@ -405,7 +405,12 @@ hooksecurefunc("GossipFrameUpdate", function(self)
 	local numAvailableQuests = table.getn(availableQuests)
 	for i=1, numAvailableQuests, 7 do
 		local titleButton = _G["GossipTitleButton" .. buttonIndex]
-		local title = "["..availableQuests[i+1].."] "..availableQuests[i]
+		local title = ""
+		if tonumber(availableQuests[i+1]) >= 0 then
+			title = "["..availableQuests[i+1].."] "..availableQuests[i]
+		else
+			title = availableQuests[i]
+		end
 		local isTrivial = availableQuests[i+2]
 		if isTrivial then
 			titleButton:SetFormattedText(TRIVIAL_QUEST_DISPLAY, title)
@@ -423,7 +428,12 @@ hooksecurefunc("GossipFrameUpdate", function(self)
 	local numActiveQuests = table.getn(activeQuests)
 	for i=1, numActiveQuests, 6 do
 		local titleButton = _G["GossipTitleButton" .. buttonIndex]
-		local title = "["..activeQuests[i+1].."] "..activeQuests[i]
+		local title = ""
+		if tonumber(activeQuests[i+1]) >= 0 then
+			title = "["..activeQuests[i+1].."] "..activeQuests[i]
+		else
+			title = activeQuests[i]
+		end
 		local isTrivial = activeQuests[i+2]
 		if isTrivial then
 			titleButton:SetFormattedText(TRIVIAL_QUEST_DISPLAY, title)
@@ -585,6 +595,21 @@ function eventFrame:UNIT_TARGET(self, unitid)
 		xanUI_UpdateFactionIcon("targettarget", TargetFrameToT)
 	end
 	
+end
+
+----------------------------------------------------------------
+---Open all bags when at bank
+----------------------------------------------------------------
+eventFrame:RegisterEvent("BANKFRAME_OPENED")
+
+function eventFrame:BANKFRAME_OPENED()
+	local numSlots, full
+	local i
+
+	numSlots, full = GetNumBankSlots()
+	for i = 0, numSlots do
+		OpenBag(NUM_BAG_SLOTS + 1 + i)
+	end
 end
 
 ----------------------------------------------------------------

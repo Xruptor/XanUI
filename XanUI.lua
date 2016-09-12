@@ -160,7 +160,7 @@ function xanUI_CreateFactionIcon(frame)
 	f:SetHeight(40)
 
 	local t = f:CreateTexture("$parentIcon", "BACKGROUND")
-	t:SetTexture("Interface\\AddOns\\xanUI\\Unknown")
+	t:SetTexture("Interface\\AddOns\\xanUI\\media\\Unknown")
 	t:SetAllPoints(f)
 	
 	if frame == TargetFrame then
@@ -463,6 +463,137 @@ hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
 end)
 
 
+function XanUI_SaveLayout(frame)
+	if type(frame) ~= "string" then return end
+	if not _G[frame] then return end
+	if not XanUIDB then XanUIDB = {} end
+	
+	local opt = XanUIDB[frame] or nil
+
+	if not opt then
+		XanUIDB[frame] = {
+			["point"] = "CENTER",
+			["relativePoint"] = "CENTER",
+			["xOfs"] = 0,
+			["yOfs"] = 0,
+		}
+		opt = XanUIDB[frame]
+		return
+	end
+
+	local point, relativeTo, relativePoint, xOfs, yOfs = _G[frame]:GetPoint()
+	opt.point = point
+	opt.relativePoint = relativePoint
+	opt.xOfs = xOfs
+	opt.yOfs = yOfs
+end
+
+function XanUI_RestoreLayout(frame)
+	if type(frame) ~= "string" then return end
+	if not _G[frame] then return end
+	if not XanUIDB then XanUIDB = {} end
+
+	local opt = XanUIDB[frame] or nil
+
+	if not opt then
+		XanUIDB[frame] = {
+			["point"] = "CENTER",
+			["relativePoint"] = "CENTER",
+			["xOfs"] = 0,
+			["yOfs"] = 0,
+		}
+		opt = XanUIDB[frame]
+	end
+
+	_G[frame]:ClearAllPoints()
+	_G[frame]:SetPoint(opt.point, UIParent, opt.relativePoint, opt.xOfs, opt.yOfs)
+end
+
+----------------------------------------------------------------
+---Movable Pet Healthbar
+----------------------------------------------------------------
+
+local function OnUnitHealthFrequent(bar)
+	if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() return end
+	
+	local hcur, hmax = UnitHealth(bar.unit), UnitHealthMax(bar.unit)
+	local hper = 0
+	if hmax > 0 then hper = hcur/hmax end
+	bar:SetValue(hper)
+	bar.percentfont:SetText(ceil(hper * 100).."%")
+end
+
+local function onUnitEvent(self, event, ...)
+	local arg1 = ...
+	local unit = self.unit
+
+	if ( arg1 == unit ) then
+		if ( event == "UNIT_HEALTH_FREQUENT" ) then
+			OnUnitHealthFrequent(self)
+		elseif ( event == "UNIT_COMBAT" or event == "UNIT_PET" or event == "UNIT_PORTRAIT_UPDATE" or event == "PET_DISMISS_START") then
+			if UnitIsDead("pet") or not UnitExists("pet") or event == "PET_DISMISS_START" then self:Hide() end
+		end
+	end
+end
+
+ 
+function XanUI_CreatePetBar()
+
+
+	local bar = CreateFrame("StatusBar","XanUIPetHealthBar", UIParent)
+	bar.unit = "pet"
+	bar:SetSize(180,10)
+	--bar.barSpark:Hide()
+	--bar.barFlash:Hide()
+	bar:SetPoint("CENTER",0,0)
+	bar:SetMinMaxValues(0, 1)
+	bar:SetStatusBarTexture("Interface\\AddOns\\xanUI\\media\\Minimalist")
+	bar:SetStatusBarColor(0,1,0)
+	--bar:SetOrientation("VERTICAL")
+	bar:RegisterUnitEvent("UNIT_HEALTH_FREQUENT", bar.unit)
+	bar:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+	bar:RegisterEvent("PET_DISMISS_START")
+	bar:RegisterEvent("UNIT_PET")
+	bar:RegisterEvent("UNIT_COMBAT")
+
+	bar:SetScript("OnEvent", onUnitEvent)
+
+	bar:SetMovable(true)
+	bar:SetScript("OnMouseDown",bar.StartMoving)
+	bar:SetScript("OnMouseUp", function() 
+		bar:StopMovingOrSizing()
+		XanUI_SaveLayout("XanUIPetHealthBar")
+	end)
+	
+	local fontstr = bar:CreateFontString("XanUIPetHealthBarPercent", "OVERLAY")
+	fontstr:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
+	fontstr:SetPoint("RIGHT", bar, "LEFT", 0, 0)
+	bar.percentfont = fontstr
+							
+	bar:Show()
+	
+	local incombat = false
+	local holder = CreateFrame("Frame")
+	holder:RegisterEvent("PLAYER_REGEN_ENABLED")
+	holder:RegisterEvent("PLAYER_REGEN_DISABLED")
+	holder:RegisterEvent("UNIT_PET")
+	holder:SetScript("OnEvent", function(self, event)
+		incombat = (event=="PLAYER_REGEN_DISABLED")
+
+		if incombat then
+			if not UnitIsDead("pet") and UnitExists("pet") then bar:Show() end
+		else
+			bar:Hide()
+		end
+
+		if event=="UNIT_PET" then
+			if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() end
+		end
+
+	end)
+	
+end
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -524,7 +655,6 @@ function eventFrame:PLAYER_LOGIN()
 	end
 	
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFFDF2B2B"..ver.."|r]   /xanui, /xui")
-	
 
 	--xanUI_UpdateRaidLocks()
 	
@@ -560,6 +690,17 @@ function eventFrame:PLAYER_LOGIN()
 	
 	--edit the character panel stats
 	xanUI_InsertStats()
+	
+	
+	--only do the pet bar for WARLOCK right now
+	if select(2, UnitClass("player")) == "WARLOCK" then
+		XanUI_CreatePetBar()
+	end
+	
+	--restore petbar if it exists
+	if _G["XanUIPetHealthBar"] then
+		XanUI_RestoreLayout("XanUIPetHealthBar")
+	end
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end

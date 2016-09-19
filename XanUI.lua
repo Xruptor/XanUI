@@ -1,6 +1,6 @@
 --[[
-	NOTE: A lot of this addon is from bits and peices of other addons.
-	I just wanted to compile them together into one single addon for my own purposes
+	NOTE: This is my personal UI modifications.  It's not meant for the general public.
+	Don't say I didn't warn you!
 --]]
 
 ----------------------------------------------------------------
@@ -147,7 +147,7 @@ end
 
 
 ----------------------------------------------------------------
----FACTION INDICATORS (TARGET ONLY)
+---FACTION INDICATORS
 ----------------------------------------------------------------
 
 function xanUI_CreateFactionIcon(frame)
@@ -513,14 +513,31 @@ end
 ---Movable Pet Healthbar
 ----------------------------------------------------------------
 
-local function OnUnitHealthFrequent(bar)
-	if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() return end
-	
+local function getBarColor(hcur, hmax)
+	local r
+	local g = 1
+	local cur = 2 * hcur/hmax
+	if cur > 1 then
+		return 2 - cur, 1, 0
+	else
+		return 1, cur, 0
+	end
+end
+
+local function setPetBarHealth(bar)
 	local hcur, hmax = UnitHealth(bar.unit), UnitHealthMax(bar.unit)
 	local hper = 0
 	if hmax > 0 then hper = hcur/hmax end
 	bar:SetValue(hper)
 	bar.percentfont:SetText(ceil(hper * 100).."%")
+	bar:SetStatusBarColor(getBarColor(hcur, hmax))
+end
+
+local function OnUnitHealthFrequent(bar)
+	if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() return end
+	if not UnitIsDead("pet") and InCombatLockdown() and UnitExists("pet") then bar:Show() end
+	
+	setPetBarHealth(bar)
 end
 
 local function onUnitEvent(self, event, ...)
@@ -542,7 +559,7 @@ function XanUI_CreatePetBar()
 
 	local bar = CreateFrame("StatusBar","XanUIPetHealthBar", UIParent)
 	bar.unit = "pet"
-	bar:SetSize(180,10)
+	bar:SetSize(100,10)
 	--bar.barSpark:Hide()
 	--bar.barFlash:Hide()
 	bar:SetPoint("CENTER",0,0)
@@ -570,18 +587,24 @@ function XanUI_CreatePetBar()
 	fontstr:SetPoint("RIGHT", bar, "LEFT", 0, 0)
 	bar.percentfont = fontstr
 							
-	bar:Show()
+	bar:Hide()
 	
 	local incombat = false
 	local holder = CreateFrame("Frame")
 	holder:RegisterEvent("PLAYER_REGEN_ENABLED")
 	holder:RegisterEvent("PLAYER_REGEN_DISABLED")
 	holder:RegisterEvent("UNIT_PET")
+	holder:RegisterEvent("COMBAT_LOG_EVENT")
 	holder:SetScript("OnEvent", function(self, event)
 		incombat = (event=="PLAYER_REGEN_DISABLED")
 
-		if incombat then
-			if not UnitIsDead("pet") and UnitExists("pet") then bar:Show() end
+		if not UnitIsDead("pet") and incombat and UnitExists("pet") then
+			setPetBarHealth(bar)
+			bar:Show()
+		elseif not UnitIsDead("pet") and InCombatLockdown() and UnitExists("pet") then
+			--this is just a catch all in case player-regen doesn't show the frame for some stupid reason
+			setPetBarHealth(bar)
+			bar:Show()
 		else
 			bar:Hide()
 		end

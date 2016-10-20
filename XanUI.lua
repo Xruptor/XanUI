@@ -39,6 +39,23 @@ end)
 -- end)
 
 
+
+----------------------------------------------------------------
+---SUPRESS THE STUPID RIGHT CLICK TARGETTING!!@!!!@@#$$#@
+----------------------------------------------------------------
+
+--[[ DoubleClickDuration = 0.3
+LastRightClick = 0
+WorldFrame:HookScript("OnMouseUp", function(self, button)
+	if (UnitAffectingCombat("player") and
+			button == "RightButton" and
+			LastRightClick + DoubleClickDuration < GetTime()) then
+		LastRightClick = GetTime()
+		MouselookStop()
+	end
+end) ]]
+
+
 ----------------------------------------------------------------
 ---ADD OPTION TO MAP TO HIDE TREASURES
 ----------------------------------------------------------------
@@ -510,6 +527,28 @@ function XanUI_RestoreLayout(frame)
 end
 
 ----------------------------------------------------------------
+---Change Blizzard Buff timers to be more readable
+----------------------------------------------------------------
+local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_HOUR   = 60 * SECONDS_PER_MINUTE
+local SECONDS_PER_DAY    = 24 * SECONDS_PER_HOUR
+
+function SecondsToTimeAbbrev(seconds)
+	if seconds <= 0 then return "" end
+
+	local days = seconds / SECONDS_PER_DAY
+	if days >= 1 then return string.format("%.1fd", days) end
+
+	local hours = seconds / SECONDS_PER_HOUR
+	if hours >= 1 then return string.format("%.02fh", hours) end
+
+	local minutes = seconds / SECONDS_PER_MINUTE
+	local seconds = seconds % SECONDS_PER_MINUTE
+	if minutes >= 1 then return string.format("%d:%02d", minutes, seconds) end
+	return string.format("%ds", seconds)
+end
+
+----------------------------------------------------------------
 ---Movable Pet Healthbar
 ----------------------------------------------------------------
 
@@ -781,15 +820,69 @@ end
 ----------------------------------------------------------------
 eventFrame:RegisterEvent("MERCHANT_SHOW")
 
+local function colorMoneyText(value)
+	if not value then return "" end
+	local gold = abs(value / 10000)
+	local silver = abs(mod(value / 100, 100))
+	local copper = abs(mod(value, 100))
+	
+	local GOLD_ABRV = "g"
+	local SILVER_ABRV = "s"
+	local COPPER_ABRV = "c"
+	
+	local WHITE = "ffffff"
+	local COLOR_COPPER = "eda55f"
+	local COLOR_SILVER = "c7c7cf"
+	local COLOR_GOLD = "ffd700"
+
+	if value >= 10000 or value <= -10000 then
+		return format("|cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r", WHITE, gold, COLOR_GOLD, GOLD_ABRV, WHITE, silver, COLOR_SILVER, SILVER_ABRV, WHITE, copper, COLOR_COPPER, COPPER_ABRV)
+	elseif value >= 100 or value <= -100 then
+		return format("|cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r", WHITE, silver, COLOR_SILVER, SILVER_ABRV, WHITE, copper, COLOR_COPPER, COPPER_ABRV)
+	else
+		return format("|cff%s%d|r|cff%s%s|r", WHITE, copper, COLOR_COPPER, COPPER_ABRV)
+	end
+end
+
 function eventFrame:MERCHANT_SHOW()
-	for bag=0,4 do
-		for slot=0,GetContainerNumSlots(bag) do
+	
+	local moneyCount = 0
+	local itemCount = 0
+	
+	for bag = 0,4 do
+		for slot = 1,GetContainerNumSlots(bag) do
 			local link = GetContainerItemLink(bag, slot)
 			if link and select(3, GetItemInfo(link)) == 0 then
-				ShowMerchantSellCursor(1)
-				UseContainerItem(bag, slot)
+				
+				local value = select(11, GetItemInfo(link))
+				
+				if value > 0 then
+					moneyCount = moneyCount + value
+					PickupContainerItem(bag, slot)
+					PickupMerchantItem()
+					itemCount = itemCount + 1
+				end
+				
 			end
 		end
+	end
+
+	-- local ignoreList = {
+		-- [140662] = "Deformed Eredar Head", --warlock artifact quest
+		-- [140661] = "Damaged Eredar Head", --warlock artifact quest
+		-- [140663] = "Malformed Eredar Head", --warlock artifact quest
+		-- [140664] = "Deficient Eredar Head", --warlock artifact quest
+		-- [140665] = "Nearly Satisfactory Eredar Head", --warlock artifact quest
+	-- }
+
+	-- result = tonumber(result:match("^(%d+):")) --just grab the first number
+	-- if result and ignoreList[result] then
+		-- ShowMerchantSellCursor(0)
+		-- return
+	-- else
+
+	if moneyCount > 0 then
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..itemCount.."> Total items vendored. ["..colorMoneyText(moneyCount).."]")
 	end
 end
 

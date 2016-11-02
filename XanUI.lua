@@ -764,7 +764,26 @@ function eventFrame:PLAYER_LOGIN()
 		XanUI_RestoreLayout("XanUIPetHealthBar")
 	end
 	
+	
+	--fix an issue with shamans and the stupid overlay that keeps showing up for fulminate on reload
+	--for spellID, overlayList in pairs(SpellActivationOverlayFrame.overlaysInUse) do
+	--	print(spellID)
+	--end
+	if select(2, UnitClass("player")) == "SHAMAN" then
+		SpellActivationOverlay_HideOverlays(SpellActivationOverlayFrame, 190494) --fulminate
+		eventFrame:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+	else
+		eventFrame:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+	end
+	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
+end
+
+function eventFrame:ACTIVE_TALENT_GROUP_CHANGED()
+	if select(2, UnitClass("player")) == "SHAMAN" then
+		SpellActivationOverlay_HideOverlays(SpellActivationOverlayFrame, 190494) --fulminate
+		--201846
+	end
 end
 
 -- local upt_throt  = 0

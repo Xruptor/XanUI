@@ -32,72 +32,6 @@ addon:SetScript("OnEvent", function()
 	colour(sb, "mouseover")
 end)
 
---stop the stupid text from displaying on hover over
---blizzard changed this with WOD
--- hooksecurefunc("ShowTextStatusBarText", function(self)
-	-- HideTextStatusBarText(self)
--- end)
-
-
-
-----------------------------------------------------------------
----SUPRESS THE STUPID RIGHT CLICK TARGETTING!!@!!!@@#$$#@
-----------------------------------------------------------------
-
---[[ DoubleClickDuration = 0.3
-LastRightClick = 0
-WorldFrame:HookScript("OnMouseUp", function(self, button)
-	if (UnitAffectingCombat("player") and
-			button == "RightButton" and
-			LastRightClick + DoubleClickDuration < GetTime()) then
-		LastRightClick = GetTime()
-		MouselookStop()
-	end
-end) ]]
-
-
-----------------------------------------------------------------
----ADD OPTION TO MAP TO HIDE TREASURES
-----------------------------------------------------------------
-
-local function click(self)
-	local checked = self.checked
-	PlaySound(checked and "igMainMenuOptionCheckBoxOn" or "igMainMenuOptionCheckBoxOff")
-	ToggleTreasuresSettings = checked
-	WorldMapFrame_Update()
-end
-
-hooksecurefunc("WorldMapTrackingOptionsDropDown_Initialize",function(self,level,menuList)
-	if level==1 then
-		-- if setting is nil (not defined) then define it to true to check by default
-		if ToggleTreasuresSettings==nil then
-			ToggleTreasuresSettings = true
-		end
-		-- add the "Show Treasures" option
-		local info = UIDropDownMenu_CreateInfo()
-		info.text = "Show Treasures"
-		info.func = click
-		info.checked = ToggleTreasuresSettings and true
-		info.isNotRadio = true
-		info.keepShownOnClick = 1
-		UIDropDownMenu_AddButton(info)
-	end
-end)
--- need to re-initialize to pick up our hooked version of the function
-UIDropDownMenu_Initialize(WorldMapFrameDropDown, WorldMapTrackingOptionsDropDown_Initialize, "MENU")
-
--- the heart of the addon; if ToggleTreasuresSettings is unchecked, then hide all "197" POIs
-hooksecurefunc("WorldMapFrame_Update",function()
-	if not ToggleTreasuresSettings then
-		for i=1,GetNumMapLandmarks() do
-			if select(4,GetMapLandmarkInfo(i))==197 then
-				_G["WorldMapFramePOI"..i]:Hide()
-			end
-		end
-	end
-end)
-
-
 -- Always show missing transmogs in tooltips
 C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
 
@@ -106,7 +40,7 @@ C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
 ----------------------------------------------------------------
 
 --don't really want to show all stats but use this as a guideline
-function xanUI_ShowAllStats()
+--[[ function xanUI_ShowAllStats()
 	PAPERDOLL_STATCATEGORIES= {
 		[1] = {
 			categoryFrame = "AttributesCategory",
@@ -149,7 +83,7 @@ function xanUI_ShowAllStats()
 		},
 	};
 	PaperDollFrame_UpdateStats();
-end
+end ]]
 
 
 function xanUI_InsertStats()
@@ -362,23 +296,12 @@ hooksecurefunc("CastingBarFrame_OnEvent", function(self, event, ...)
 end)
 
 
---[[------------------------
-	This will fix the issues where the damn pet bar isn't showing up sometimes
---------------------------]]
-
--- local function checkPetBar()
-	-- if not InCombatLockdown() and not PetActionBarFrame:IsVisible() and UnitExists("pet") and not UnitIsUnconscious("pet") then
-		-- if not UnitInVehicle("player") or not UnitHasVehicleUI("player") then
-			-- PetActionBarFrame:Show()
-		-- end
-	-- end
--- end
-
-
-
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
+
+--SHOW Quest level information on the quest tracker
+--Color it by level as well if necessary
 
 hooksecurefunc('QuestInfo_Display', function(template, parentFrame, acceptButton, material, mapView)
 	local elementsTable = template.elements
@@ -480,6 +403,10 @@ hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
 end)
 
 
+----------------------------------------------------------------
+----------------------------------------------------------------
+----------------------------------------------------------------
+
 function XanUI_SaveLayout(frame)
 	if type(frame) ~= "string" then return end
 	if not _G[frame] then return end
@@ -570,6 +497,7 @@ local function setPetBarHealth(bar)
 	bar:SetValue(hper)
 	bar.percentfont:SetText(ceil(hper * 100).."%")
 	bar:SetStatusBarColor(getBarColor(hcur, hmax))
+	bar.petname:SetText(UnitName("pet"))
 end
 
 local function OnUnitHealthFrequent(bar)
@@ -621,9 +549,14 @@ function XanUI_CreatePetBar()
 		XanUI_SaveLayout("XanUIPetHealthBar")
 	end)
 	
+	local petNameFont = bar:CreateFontString("XanUIPetHealthBarPetName", "OVERLAY")
+	petNameFont:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
+	petNameFont:SetPoint("RIGHT", bar, "LEFT", 0, 0)
+	bar.petname = petNameFont
+	
 	local fontstr = bar:CreateFontString("XanUIPetHealthBarPercent", "OVERLAY")
 	fontstr:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-	fontstr:SetPoint("RIGHT", bar, "LEFT", 0, 0)
+	fontstr:SetPoint("LEFT", bar, "RIGHT", 0, 0)
 	bar.percentfont = fontstr
 							
 	bar:Hide()
@@ -718,15 +651,6 @@ function eventFrame:PLAYER_LOGIN()
 	
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFFDF2B2B"..ver.."|r]   /xanui, /xui")
 
-	--xanUI_UpdateRaidLocks()
-	
-	--create the castbars
-	-- if XSpellBar then
-		-- for i = 1,4 do
-			-- XSpellBar:New(getglobal("PartyMemberFrame"..i))
-		-- end
-	-- end 
-
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
 
@@ -753,7 +677,6 @@ function eventFrame:PLAYER_LOGIN()
 	--edit the character panel stats
 	xanUI_InsertStats()
 	
-	
 	--only do the pet bar for WARLOCK right now
 	if select(2, UnitClass("player")) == "WARLOCK" then
 		XanUI_CreatePetBar()
@@ -763,49 +686,9 @@ function eventFrame:PLAYER_LOGIN()
 	if _G["XanUIPetHealthBar"] then
 		XanUI_RestoreLayout("XanUIPetHealthBar")
 	end
-	
-	
-	--fix an issue with shamans and the stupid overlay that keeps showing up for fulminate on reload
-	--for spellID, overlayList in pairs(SpellActivationOverlayFrame.overlaysInUse) do
-	--	print(spellID)
-	--end
-	if select(2, UnitClass("player")) == "SHAMAN" then
-		SpellActivationOverlay_HideOverlays(SpellActivationOverlayFrame, 190494) --fulminate
-		eventFrame:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
-	else
-		eventFrame:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
-	end
-	
+
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
-
-function eventFrame:ACTIVE_TALENT_GROUP_CHANGED()
-	if select(2, UnitClass("player")) == "SHAMAN" then
-		SpellActivationOverlay_HideOverlays(SpellActivationOverlayFrame, 190494) --fulminate
-		--201846
-	end
-end
-
--- local upt_throt  = 0
-
--- eventFrame:HookScript("OnUpdate", function(self, elapsed)
-	--do some throttling
-	-- upt_throt = upt_throt + elapsed
-	-- if upt_throt < 3 then return end
-	-- upt_throt = 0
-			
-	--because hunters start off with a fake pet that they really can't dismiss or control, we can ignore the pet show function
-	--until they learn tame pet
-	-- if select(2, UnitClass("player")) == "HUNTER" then
-		--check for tame pet
-		-- if IsSpellKnown(1515) then
-			-- checkPetBar()
-		-- end
-	-- else
-		-- checkPetBar()
-	-- end
-	
--- end)
 
 function eventFrame:PLAYER_TARGET_CHANGED()
 	xanUI_UpdateFactionIcon("target", TargetFrame)
@@ -906,60 +789,3 @@ function eventFrame:MERCHANT_SHOW()
 end
 
 if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end
-
-------------------------------------------------
-------------------------------------------------
-------------------------------------------------
-
--- function eventFrame:PARTY_MEMBERS_CHANGED()
-	-- xanUI_UpdateRaidPositions()
-	-- checkPetBar()
--- end
-
--- function eventFrame:PLAYER_ENTERING_WORLD()
-	-- xanUI_UpdateRaidPositions()
-	-- checkPetBar()
--- end
-
-
--- function eventFrame:PET_BAR_UPDATE()
-	-- checkPetBar()
--- end
-
--- function eventFrame:UNIT_PET(event, unitID)
-	-- if (unitID and unitID == "player") then
-		-- checkPetBar()
-	-- end
--- end
-
--- function eventFrame:UNIT_AURA(event, unitID)
-	-- if (unitID and unitID == "player") then
-		-- checkPetBar()
-	-- end
--- end
-
--- function eventFrame:UNIT_SPELLCAST_START(event, unitID)
-	-- if (unitID and unitID == "player") then
-		-- checkPetBar()
-	-- end
--- end
-
--- function eventFrame:UNIT_SPELLCAST_STOP(event, unitID)
-	-- if (unitID and unitID == "player") then
-		-- checkPetBar()
-	-- end
--- end
-
--- function eventFrame:UNIT_SPELLCAST_SUCCEEDED(event, unitID)
-	-- if (unitID and unitID == "player") then
-		-- checkPetBar()
-	-- end
--- end
-
--- function eventFrame:PLAYER_REGEN_DISABLED()
-	-- checkPetBar()
--- end
-
--- function eventFrame:PLAYER_REGEN_ENABLED()
-	-- checkPetBar()
--- end

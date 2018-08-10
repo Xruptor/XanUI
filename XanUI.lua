@@ -95,8 +95,6 @@ function xanUI_InsertStats()
 
 end
 
-
-
 ----------------------------------------------------------------
 ---FACTION INDICATORS
 ----------------------------------------------------------------
@@ -303,88 +301,6 @@ end)
 --SHOW Quest level information on the quest tracker
 --Color it by level as well if necessary
 
-hooksecurefunc('QuestInfo_Display', function(template, parentFrame, acceptButton, material, mapView)
-	local elementsTable = template.elements
-	for i = 1, #elementsTable, 3 do
-		if elementsTable[i] == QuestInfo_ShowTitle then
-			if QuestInfoFrame.questLog then
-				local questLogIndex = GetQuestLogSelection()
-				local level = select(2, GetQuestLogTitle(questLogIndex))
-				local newTitle = "["..level.."] "..QuestInfoTitleHeader:GetText()
-				QuestInfoTitleHeader:SetText(newTitle)
-			end
-		end
-	end
-end)
-
-hooksecurefunc("QuestLogQuests_Update", function(self, pIndex)
-	local numEntries, numQuests = GetNumQuestLogEntries()
-	local headerCollapsed = false
-	local titleIndex = 0
-	for questLogIndex = 1, numEntries do
-		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(questLogIndex)
-		if ( isHeader ) then
-			headerCollapsed = isCollapsed
-		elseif not isTask and (not isBounty or IsQuestComplete(questID)) and not headerCollapsed then
-			titleIndex = titleIndex + 1
-			local button = QuestLogQuests_GetTitleButton(titleIndex)
-			local oldBlockHeight = button:GetHeight()
-			local oldHeight = button.Text:GetStringHeight()
-			local newTitle = "["..level.."] "..button.Text:GetText()
-			button.Text:SetText(newTitle)
-			local newHeight = button.Text:GetStringHeight()
-			button:SetHeight(oldBlockHeight + newHeight - oldHeight)
-		end
-	end
-end)
-
-hooksecurefunc("GossipFrameUpdate", function(self)
-	local buttonIndex = 1
-
-	local availableQuests = {GetGossipAvailableQuests()}
-	local numAvailableQuests = table.getn(availableQuests)
-	for i=1, numAvailableQuests, 7 do
-		local titleButton = _G["GossipTitleButton" .. buttonIndex]
-		local title = ""
-		if tonumber(availableQuests[i+1]) >= 0 then
-			title = "["..availableQuests[i+1].."] "..availableQuests[i]
-		else
-			title = availableQuests[i]
-		end
-		local isTrivial = availableQuests[i+2]
-		if isTrivial then
-			titleButton:SetFormattedText(TRIVIAL_QUEST_DISPLAY, title)
-		else
-			titleButton:SetFormattedText(NORMAL_QUEST_DISPLAY, title)
-		end
-		GossipResize(titleButton)
-		buttonIndex = buttonIndex + 1
-	end
-	if numAvailableQuests > 1 then
-		buttonIndex = buttonIndex + 1
-	end
-
-	local activeQuests = {GetGossipActiveQuests()}
-	local numActiveQuests = table.getn(activeQuests)
-	for i=1, numActiveQuests, 6 do
-		local titleButton = _G["GossipTitleButton" .. buttonIndex]
-		local title = ""
-		if tonumber(activeQuests[i+1]) >= 0 then
-			title = "["..activeQuests[i+1].."] "..activeQuests[i]
-		else
-			title = activeQuests[i]
-		end
-		local isTrivial = activeQuests[i+2]
-		if isTrivial then
-			titleButton:SetFormattedText(TRIVIAL_QUEST_DISPLAY, title)
-		else
-			titleButton:SetFormattedText(NORMAL_QUEST_DISPLAY, title)
-		end
-		GossipResize(titleButton)
-		buttonIndex = buttonIndex + 1
-	end
-end)
-
 hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
 	for i = 1, GetNumQuestWatches() do
 		local questID, title, questLogIndex, numObjectives, requiredMoney, isComplete, startEvent, isAutoComplete, failureTime, timeElapsed, questType, isTask, isStory, isOnMap, hasLocalPOI = GetQuestWatchInfo(i)
@@ -401,7 +317,6 @@ hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
 		end
 	end
 end)
-
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -475,119 +390,6 @@ function SecondsToTimeAbbrev(seconds)
 	return string.format("%ds", seconds)
 end
 
-----------------------------------------------------------------
----Movable Pet Healthbar
-----------------------------------------------------------------
-
-local function getBarColor(hcur, hmax)
-	local r
-	local g = 1
-	local cur = 2 * hcur/hmax
-	if cur > 1 then
-		return 2 - cur, 1, 0
-	else
-		return 1, cur, 0
-	end
-end
-
-local function setPetBarHealth(bar)
-	local hcur, hmax = UnitHealth(bar.unit), UnitHealthMax(bar.unit)
-	local hper = 0
-	if hmax > 0 then hper = hcur/hmax end
-	bar:SetValue(hper)
-	bar.percentfont:SetText(ceil(hper * 100).."%")
-	bar:SetStatusBarColor(getBarColor(hcur, hmax))
-	bar.petname:SetText(UnitName("pet"))
-end
-
-local function OnUnitHealthFrequent(bar)
-	if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() return end
-	if not UnitIsDead("pet") and InCombatLockdown() and UnitExists("pet") then bar:Show() end
-	
-	setPetBarHealth(bar)
-end
-
-local function onUnitEvent(self, event, ...)
-	local arg1 = ...
-	local unit = self.unit
-
-	if ( arg1 == unit ) then
-		if ( event == "UNIT_HEALTH_FREQUENT" ) then
-			OnUnitHealthFrequent(self)
-		elseif ( event == "UNIT_COMBAT" or event == "UNIT_PET" or event == "UNIT_PORTRAIT_UPDATE" or event == "PET_DISMISS_START") then
-			if UnitIsDead("pet") or not UnitExists("pet") or event == "PET_DISMISS_START" then self:Hide() end
-		end
-	end
-end
-
- 
-function XanUI_CreatePetBar()
-
-
-	local bar = CreateFrame("StatusBar","XanUIPetHealthBar", UIParent)
-	bar.unit = "pet"
-	bar:SetSize(100,10)
-	--bar.barSpark:Hide()
-	--bar.barFlash:Hide()
-	bar:SetPoint("CENTER",0,0)
-	bar:SetMinMaxValues(0, 1)
-	bar:SetStatusBarTexture("Interface\\AddOns\\xanUI\\media\\Minimalist")
-	bar:SetStatusBarColor(0,1,0)
-	--bar:SetOrientation("VERTICAL")
-	bar:RegisterUnitEvent("UNIT_HEALTH_FREQUENT", bar.unit)
-	bar:RegisterEvent("UNIT_PORTRAIT_UPDATE")
-	bar:RegisterEvent("PET_DISMISS_START")
-	bar:RegisterEvent("UNIT_PET")
-	bar:RegisterEvent("UNIT_COMBAT")
-
-	bar:SetScript("OnEvent", onUnitEvent)
-
-	bar:SetMovable(true)
-	bar:SetScript("OnMouseDown",bar.StartMoving)
-	bar:SetScript("OnMouseUp", function() 
-		bar:StopMovingOrSizing()
-		XanUI_SaveLayout("XanUIPetHealthBar")
-	end)
-	
-	local petNameFont = bar:CreateFontString("XanUIPetHealthBarPetName", "OVERLAY")
-	petNameFont:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-	petNameFont:SetPoint("RIGHT", bar, "LEFT", 0, 0)
-	bar.petname = petNameFont
-	
-	local fontstr = bar:CreateFontString("XanUIPetHealthBarPercent", "OVERLAY")
-	fontstr:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
-	fontstr:SetPoint("LEFT", bar, "RIGHT", 0, 0)
-	bar.percentfont = fontstr
-							
-	bar:Hide()
-	
-	local incombat = false
-	local holder = CreateFrame("Frame")
-	holder:RegisterEvent("PLAYER_REGEN_ENABLED")
-	holder:RegisterEvent("PLAYER_REGEN_DISABLED")
-	holder:RegisterEvent("UNIT_PET")
-	holder:RegisterEvent("COMBAT_LOG_EVENT")
-	holder:SetScript("OnEvent", function(self, event)
-		incombat = (event=="PLAYER_REGEN_DISABLED")
-
-		if not UnitIsDead("pet") and incombat and UnitExists("pet") then
-			setPetBarHealth(bar)
-			bar:Show()
-		elseif not UnitIsDead("pet") and InCombatLockdown() and UnitExists("pet") then
-			--this is just a catch all in case player-regen doesn't show the frame for some stupid reason
-			setPetBarHealth(bar)
-			bar:Show()
-		else
-			bar:Hide()
-		end
-
-		if event=="UNIT_PET" then
-			if UnitIsDead("pet") or not UnitExists("pet") then bar:Hide() end
-		end
-
-	end)
-	
-end
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -600,18 +402,7 @@ eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("UNIT_TARGET")
 
---we need to fix a problem where sometimes the pet bar isn't showing up!
--- eventFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
--- eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
--- eventFrame:RegisterEvent("PET_BAR_UPDATE")
--- eventFrame:RegisterEvent("UNIT_PET")
--- eventFrame:RegisterEvent("UNIT_AURA")
--- eventFrame:RegisterEvent("UNIT_SPELLCAST_START")
--- eventFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
--- eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
--- eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
--- eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-
+local TomTomWPS = {}
 
 function eventFrame:PLAYER_LOGIN()
 	if not XanUIDB then XanUIDB = {} end
@@ -649,7 +440,7 @@ function eventFrame:PLAYER_LOGIN()
 
 	end
 	
-	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFFDF2B2B"..ver.."|r]   /xanui, /xui")
+	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
 
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
@@ -676,16 +467,23 @@ function eventFrame:PLAYER_LOGIN()
 	
 	--edit the character panel stats
 	xanUI_InsertStats()
-	
-	--only do the pet bar for WARLOCK right now
-	if select(2, UnitClass("player")) == "WARLOCK" then
-		XanUI_CreatePetBar()
+
+	if TomTom then
+		--add the Shal'Aran portal destinations because it's annoying to remember them
+		--crazy is for the crazy arrow, setting cleardistance allows the waypoint to persist even when you go near it.  Otherwise it gets removed when you approach.
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 39.1/100, 76.3/100, { title = "Portal: Felsoul Hold", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 21.5/100, 29.9/100, { title = "Portal: Falanaar", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 30.8/100, 10.9/100, { title = "Portal: Moon Guard Stronghold", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.6/100, 79.1/100, { title = "Portal: Lunastre Estate", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 36.2/100, 47.1/100, { title = "Portal: Ruins of Elune'eth", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 47.6/100, 81.6/100, { title = "Portal: The Waning Crescent", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.4/100, 60.7/100, { title = "Portal: Sanctum of Order", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 42.2/100, 35.4/100, { title = "Portal: Tel'anor", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 64.0/100, 60.4/100, { title = "Portal: Vineyard Vineyards", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 54.4/100, 69.5/100, { title = "Portal: Harbor", crazy=false, persistent=true, cleardistance=0 }) )
+		--add them all to a table to remove them in the future
 	end
-	
-	--restore petbar if it exists
-	if _G["XanUIPetHealthBar"] then
-		XanUI_RestoreLayout("XanUIPetHealthBar")
-	end
+
 
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
@@ -722,29 +520,7 @@ end
 ----------------------------------------------------------------
 eventFrame:RegisterEvent("MERCHANT_SHOW")
 
-local function colorMoneyText(value)
-	if not value then return "" end
-	local gold = abs(value / 10000)
-	local silver = abs(mod(value / 100, 100))
-	local copper = abs(mod(value, 100))
-	
-	local GOLD_ABRV = "g"
-	local SILVER_ABRV = "s"
-	local COPPER_ABRV = "c"
-	
-	local WHITE = "ffffff"
-	local COLOR_COPPER = "eda55f"
-	local COLOR_SILVER = "c7c7cf"
-	local COLOR_GOLD = "ffd700"
-
-	if value >= 10000 or value <= -10000 then
-		return format("|cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r", WHITE, gold, COLOR_GOLD, GOLD_ABRV, WHITE, silver, COLOR_SILVER, SILVER_ABRV, WHITE, copper, COLOR_COPPER, COPPER_ABRV)
-	elseif value >= 100 or value <= -100 then
-		return format("|cff%s%d|r|cff%s%s|r |cff%s%d|r|cff%s%s|r", WHITE, silver, COLOR_SILVER, SILVER_ABRV, WHITE, copper, COLOR_COPPER, COPPER_ABRV)
-	else
-		return format("|cff%s%d|r|cff%s%s|r", WHITE, copper, COLOR_COPPER, COPPER_ABRV)
-	end
-end
+local doGuildRepairs = false
 
 function eventFrame:MERCHANT_SHOW()
 	
@@ -756,15 +532,16 @@ function eventFrame:MERCHANT_SHOW()
 			local link = GetContainerItemLink(bag, slot)
 			if link and select(3, GetItemInfo(link)) == 0 then
 				
-				local value = select(11, GetItemInfo(link))
-				
+				local value = select(11, GetItemInfo(link)) or 0
 				if value > 0 then
+					UseContainerItem(bag, slot)
 					moneyCount = moneyCount + value
+				else
 					PickupContainerItem(bag, slot)
-					PickupMerchantItem()
-					itemCount = itemCount + 1
+					DeleteCursorItem()
 				end
 				
+				itemCount = itemCount + 1
 			end
 		end
 	end
@@ -784,8 +561,38 @@ function eventFrame:MERCHANT_SHOW()
 	-- else
 
 	if moneyCount > 0 then
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..itemCount.."> Total items vendored. ["..colorMoneyText(moneyCount).."]")
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..itemCount.."> Total items vendored. ["..GetCoinTextureString(moneyCount).."]")
 	end
+	
+	--do repairs
+	if CanMerchantRepair() then
+		local repairCost, canRepair = GetRepairAllCost()
+		if canRepair and repairCost > 0 then
+			if doGuildRepairs and CanGuildBankRepair() then
+				local amount = GetGuildBankWithdrawMoney()
+				local guildMoney = GetGuildBankMoney()
+				if amount == -1 then
+					amount = guildMoney
+				else
+					amount = min(amount, guildMoney)
+				end
+				if amount > repairCost then
+					RepairAllItems(1)
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Repaired from Guild. ["..GetCoinTextureString(repairCost).."]")
+					return
+				else
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Insufficient guild funds to make repairs. ["..GetCoinTextureString(repairCost).."]")
+				end
+			elseif GetMoney() > repairCost then
+				RepairAllItems()
+				DEFAULT_CHAT_FRAME:AddMessage("xanUI: Repaired all items. ["..GetCoinTextureString(repairCost).."]")
+				return
+			else
+				DEFAULT_CHAT_FRAME:AddMessage("xanUI: Insufficient funds to make repairs. ["..GetCoinTextureString(repairCost).."]")
+			end
+		end
+	end
+	
 end
 
 if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end

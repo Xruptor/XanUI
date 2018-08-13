@@ -124,8 +124,8 @@ function xanUI_CreateFactionIcon(frame)
 end
 
 function xanUI_UpdateFactionIcon(unit, frame)
-	if not unit then return nil; end
-	if not frame then return nil; end
+	if not unit then return nil end
+	if not frame then return nil end
 
 	if frame == TargetFrame then
 		--we have to move the target raid icon identifier to the right a bit (skull, diamond, star, etc..)
@@ -151,20 +151,72 @@ function xanUI_UpdateFactionIcon(unit, frame)
 			getglobal(frame:GetName().."Faction"):Show()
 		else
 			getglobal(frame:GetName().."Faction"):Hide()
-		end		
-	else
-		if( UnitFactionGroup(unit) and UnitFactionGroup(unit):lower() ~= "neutral"	) then
-			getglobal(frame:GetName().."FactionIcon"):SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", UnitFactionGroup(unit)))
-			getglobal(frame:GetName().."Faction"):Show()
-		else
-			getglobal(frame:GetName().."Faction"):Hide()
-		end	
+		end
 	end
 
 end
 
-xanUI_CreateFactionIcon(TargetFrame);
+xanUI_CreateFactionIcon(TargetFrame)
 xanUI_CreateFactionIcon(TargetFrameToT)
+
+----------------------------------------------------------------
+---CLASS SPEC INDICATORS
+----------------------------------------------------------------
+
+local specEventFrame = CreateFrame("Frame")
+
+function xanUI_UpdateClassSpecIcon()
+	getglobal("TargetFrameClassSpec"):Hide()
+	if CanInspect("target") then
+		specEventFrame:RegisterEvent("INSPECT_READY")
+		NotifyInspect("target")
+	end
+end
+
+specEventFrame:SetScript("OnEvent", function(self, event, ...)
+	
+	if UnitIsPlayer("target") then
+	
+		local spec_id = GetInspectSpecialization("target")
+		
+		specEventFrame:UnregisterEvent("INSPECT_READY")
+		ClearInspectPlayer()
+		
+		local id, name, description, icon, background, role, class = GetSpecializationInfoByID(spec_id)
+
+		getglobal("TargetFrameClassSpecIcon"):SetTexture(icon)
+		getglobal("TargetFrameClassSpec"):Show()
+	else
+		getglobal("TargetFrameClassSpec"):Hide()
+	end
+
+end)
+
+function xanUI_CreateClassSpecIcons(frame)
+	local f
+	
+	f = CreateFrame("Frame", "$parentClassSpec", frame)
+
+	f:SetFrameStrata("MEDIUM")
+	f:SetWidth(42)
+	f:SetHeight(42)
+
+	local t = f:CreateTexture("$parentIcon", "BACKGROUND", nil, 2)
+	local q = f:CreateTexture("$parentRing", "BACKGROUND", nil, 3)
+	
+	q:SetPoint("CENTER", f, "CENTER", 0, 0)
+	q:SetSize(42, 42)
+	q:SetAtlas('Talent-RingWithDot')
+
+	t:SetPoint('TOPLEFT', q, 9, -9)
+	t:SetPoint('BOTTOMRIGHT', q, -9, 9)
+	
+	f:SetPoint("CENTER", 88, 35)
+	f:Hide()
+end
+
+xanUI_CreateClassSpecIcons(TargetFrame)
+
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -395,6 +447,157 @@ end
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
+
+--[[ local worldmapProvider = CreateFromMixins(MapCanvasDataProviderMixin)
+WorldMapFrame:AddDataProvider(worldmapProvider) ]]
+
+-- function worldmapProvider:RefreshAllData(fromOnShow)
+    -- self:RemoveAllData()
+
+    -- for icon, data in pairs(worldmapPins) do
+        -- self:HandlePin(icon, data)
+    -- end
+-- end
+
+-- local function UpdateWorldMap()
+    -- worldmapProvider:RefreshAllData()
+-- end
+
+--xanUI_Test = {}
+
+--hooksecurefunc ("ToggleWorldMap", function (self)
+
+--	if (WorldMapFrame:IsShown()) then
+	
+
+	--[[ 	if WorldMapFrame then
+			-- xanUI_Test.pins = {}
+
+			-- for sourcePin in worldmapProvider:GetMap():EnumerateAllPins() do
+				-- table.insert(xanUI_Test.pins, sourcePin)
+			-- end
+
+			-- xanUI_Test.maps = worldmapProvider:GetMap():EnumerateAllPins()
+
+			xanUI_Test.default_pins = {}
+			xanUI_Test.default_state = {}
+			xanUI_Test.dataProviders = WorldMapFrame.dataProviders
+			
+			xanUI_Test.get_maps = {}
+
+			for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
+				table.insert(xanUI_Test.default_pins, dataProvider)
+				table.insert(xanUI_Test.default_state, state)
+				
+				table.insert(xanUI_Test.get_maps, dataProvider:GetMap())
+				
+				--self:GetMap():RemoveAllPinsByTemplate("DigSitePinTemplate");
+				
+				--dataProvider:GetMap():GetMapID()
+				--dataProvider:GetMap().pinPools
+				
+				--if dataProvider.RemoveAllData then
+					--dataProvider:RemoveAllData()
+				--end
+			end
+			
+			
+		end ]]
+		
+--[[ 			for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
+				local mapID = dataProvider:GetMap():GetMapID()
+				local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+				
+				if (taskInfo and #taskInfo > 0) then
+					for i, info  in ipairs (taskInfo) do
+						local questID = info.questId
+						if (HaveQuestData (questID)) then
+							local isWorldQuest = QuestUtils_IsQuestWorldQuest (questID)
+							if (isWorldQuest) then
+								Debug(mapID, questID)
+							end
+						end
+					end
+				end
+				
+			end ]]
+
+--	end
+	
+--end)
+
+
+
+
+
+
+
+
+
+--[[ 
+xanUI_pins = {}
+xanUI_Texture = {}
+
+--WorldQuestDataProviderMixin:AddWorldQuest(info)
+--worldquest-icon-dungeon
+
+hooksecurefunc (WorldMapFrame, "OnMapChanged", function()
+
+	local mapID = WorldMapFrame.mapID
+
+	for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
+
+		if mapID == dataProvider:GetMap():GetMapID() then
+			
+			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+	
+			if (taskInfo and #taskInfo > 0) then
+
+				local questPins = {}
+				
+				for pin in dataProvider:GetMap():EnumerateAllPins() do
+					if pin.questID and pin.Background then
+						questPins[pin.questID] = pin
+						table.insert(xanUI_pins, pin)
+						--Debug("Background", pin.icon, pin.name, pin.Background:GetTexture())
+					end
+					
+					if pin.Texture then
+						table.insert(xanUI_Texture, pin.Texture)
+						--Debug("Underlay", pin.icon, pin.name, pin.Texture:GetTexture())
+					end
+					
+					--local filename, width, height, left, right, top, bottom, tilesHoriz, tilesVert = GetAtlasInfo("worldquest-icon-dungeon")
+					
+					--Debug(filename, width, height, left, right, top, bottom, tilesHoriz, tilesVert)
+					
+				end
+			
+				for i, info  in ipairs (taskInfo) do
+					local questID = info.questId
+					if (HaveQuestData (questID)) then
+						local isWorldQuest = QuestUtils_IsQuestWorldQuest (questID)
+						if isWorldQuest and questPins[questID] and questPins[questID].worldQuest then
+							--dataProvider:GetMap():RemovePin(questPins[questID])
+							
+						end
+					end
+				end
+				
+			end
+			
+			break
+		end
+		
+	end
+
+end) ]]
+	
+----------------------------------------------------------------
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+
 local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
 eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 
@@ -479,17 +682,18 @@ function eventFrame:PLAYER_LOGIN()
 		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 47.6/100, 81.6/100, { title = "Portal: The Waning Crescent", crazy=false, persistent=true, cleardistance=0 }) )
 		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.4/100, 60.7/100, { title = "Portal: Sanctum of Order", crazy=false, persistent=true, cleardistance=0 }) )
 		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 42.2/100, 35.4/100, { title = "Portal: Tel'anor", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 64.0/100, 60.4/100, { title = "Portal: Vineyard Vineyards", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 54.4/100, 69.5/100, { title = "Portal: Harbor", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 64.0/100, 60.4/100, { title = "Portal: Twilight Vineyards", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 54.4/100, 69.5/100, { title = "Portal: Harbor (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
+		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 52.03/100, 78.86/100, { title = "Portal: Evermoon Terrace (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
 		--add them all to a table to remove them in the future
 	end
-
-
+		
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
 function eventFrame:PLAYER_TARGET_CHANGED()
 	xanUI_UpdateFactionIcon("target", TargetFrame)
+	xanUI_UpdateClassSpecIcon()
 end
 
 function eventFrame:UNIT_TARGET(self, unitid)

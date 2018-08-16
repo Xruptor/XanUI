@@ -529,12 +529,29 @@ WorldMapFrame:AddDataProvider(worldmapProvider) ]]
 
 
 
-
-
-
+--[[ local function OrigProviderOnRemoved(self, mapCanvas)
+    -- temporary fix to prevent error when removing the original world quest provider, I've notified
+    -- Blizzard developers directly about this issue and it should be resolved soon™
+    local Map = self:GetMap()
+    Map:UnregisterCallback('SetFocusedQuestID', self.setFocusedQuestIDCallback)
+    Map:UnregisterCallback('ClearFocusedQuestID', self.clearFocusedQuestIDCallback)
+    Map:UnregisterCallback('SetBountyQuestID', self.setBountyQuestIDCallback)
+ 
+    MapCanvasDataProviderMixin.OnRemoved(self, mapCanvas)
+end
+ 
+for provider in next, WorldMapFrame.dataProviders do
+    if(provider.GetPinTemplate and provider.GetPinTemplate() == 'WorldMap_WorldQuestPinTemplate') then
+        -- BUG: the OnRemoved method is broken, so we replace it before we remove the provider
+        provider.OnRemoved = OrigProviderOnRemoved
+        WorldMapFrame:RemoveDataProvider(provider)
+    end
+end
+ ]]
 
 
 --[[ 
+
 xanUI_pins = {}
 xanUI_Texture = {}
 
@@ -548,7 +565,7 @@ hooksecurefunc (WorldMapFrame, "OnMapChanged", function()
 	for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
 
 		if mapID == dataProvider:GetMap():GetMapID() then
-			
+				
 			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
 	
 			if (taskInfo and #taskInfo > 0) then
@@ -576,10 +593,8 @@ hooksecurefunc (WorldMapFrame, "OnMapChanged", function()
 				for i, info  in ipairs (taskInfo) do
 					local questID = info.questId
 					if (HaveQuestData (questID)) then
-						local isWorldQuest = QuestUtils_IsQuestWorldQuest (questID)
-						if isWorldQuest and questPins[questID] and questPins[questID].worldQuest then
+						if questPins[questID] and questPins[questID].worldQuest then
 							--dataProvider:GetMap():RemovePin(questPins[questID])
-							
 						end
 					end
 				end

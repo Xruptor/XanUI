@@ -336,16 +336,6 @@ if TargetFrameSpellBar then
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills
 end
 
---double check the target castbar hasn't lost the tradeskill setting (another mod may change it)
-hooksecurefunc("CastingBarFrame_OnEvent", function(self, event, ...)
-	if self and self:GetName() == "TargetFrameSpellBar" then
-		if TargetFrameSpellBar.showTradeSkills ~= enableTradeskills then
-			TargetFrameSpellBar.showTradeSkills = enableTradeskills
-		end
-	end
-end)
-
-
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -703,6 +693,18 @@ function eventFrame:PLAYER_LOGIN()
 		--add them all to a table to remove them in the future
 	end
 		
+	--NAMEPLATES
+	--http://www.wowinterface.com/forums/showthread.php?t=55998
+	SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
+	SetCVar("nameplateShowFriends", 1) -- show for friendly units
+	SetCVar("nameplateShowFriendlyNPCs", 0) --show the nameplates on friendly units as well
+
+	--SetCVar("nameplateShowEnemyMinions", 0) -- Enemy Minions
+	--SetCVar("nameplateShowEnemyMinus", 0) -- Enemy Minors
+	
+	SetCVar("nameplateMaxDistance", 100) --default 60
+
+				
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
@@ -717,6 +719,51 @@ function eventFrame:UNIT_TARGET(self, unitid)
 		xanUI_UpdateFactionIcon("targettarget", TargetFrameToT)
 	end
 	
+end
+
+----------------------------------------------------------------
+---Shows total gold if any in the mailbox
+----------------------------------------------------------------
+eventFrame:RegisterEvent("MAIL_SHOW")
+eventFrame:RegisterEvent("MAIL_CLOSED")
+eventFrame:RegisterEvent("MAIL_INBOX_UPDATE")
+
+function eventFrame:MAIL_SHOW()
+	if not MailFrame.totalMoneyInBox then
+		MailFrame.totalMoneyInBox = MailFrame:CreateFontString(nil, "OVERLAY")
+		MailFrame.totalMoneyInBox:SetFontObject('NumberFontNormal')
+		MailFrame.totalMoneyInBox:SetPoint("CENTER", MailFrame, "TOP", 0, 12)
+	end
+end
+
+function eventFrame:MAIL_INBOX_UPDATE()
+	if not MailFrame.totalMoneyInBox then return end
+
+	local mountCount = 0
+
+	local numInbox = GetInboxNumItems()
+
+	--scan the inbox
+	if (numInbox > 0) then
+		for mailIndex = 1, numInbox do
+			local packageIcon, stationeryIcon, sender, subject, money = GetInboxHeaderInfo(mailIndex)
+			if money > 0 then
+				mountCount = mountCount + money
+			end
+		end
+	end
+	
+	if mountCount > 0 then
+		MailFrame.totalMoneyInBox:SetText("Total Money: "..GetCoinTextureString(mountCount))
+	else
+		MailFrame.totalMoneyInBox:Hide()
+	end
+	
+end
+
+
+function eventFrame:MAIL_CLOSED()
+	if MailFrame.totalMoneyInBox then MailFrame.totalMoneyInBox:Hide() end
 end
 
 ----------------------------------------------------------------

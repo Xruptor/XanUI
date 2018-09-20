@@ -96,6 +96,103 @@ function xanUI_InsertStats()
 end
 
 ----------------------------------------------------------------
+---Movable Pet Healthbar
+----------------------------------------------------------------
+ local function getBarColor(hcur, hmax)
+	local r
+	local g = 1
+	local cur = 2 * hcur/hmax
+	if cur > 1 then
+		return 2 - cur, 1, 0
+	else
+		return 1, cur, 0
+	end
+end
+
+ local function setPetBarHealth()
+	if not XanUIPetHealthBar then return end
+	local hcur, hmax = UnitHealth("pet"), UnitHealthMax("pet")
+	local hper = 0
+	if hmax > 0 then hper = hcur/hmax end
+	XanUIPetHealthBar:SetValue(hper)
+	XanUIPetHealthBar.percentfont:SetText(ceil(hper * 100).."%")
+	XanUIPetHealthBar:SetStatusBarColor(getBarColor(hcur, hmax))
+	XanUIPetHealthBar.petname:SetText(UnitName("pet"))
+end
+
+function XanUI_CreatePetBar()
+ 	local bar = CreateFrame("StatusBar","XanUIPetHealthBar", UIParent)
+	bar.unit = "pet"
+	bar:SetSize(100,10)
+	--bar.barSpark:Hide()
+	--bar.barFlash:Hide()
+	bar:SetPoint("CENTER",0,0)
+	bar:SetMinMaxValues(0, 1)
+	bar:SetStatusBarTexture("Interface\\AddOns\\xanUI\\media\\Minimalist")
+	bar:SetStatusBarColor(0,1,0)
+	--bar:SetOrientation("VERTICAL")
+ 	bar:SetMovable(true)
+	bar:SetScript("OnMouseDown",function()
+		if (IsShiftKeyDown()) then
+			bar.isMoving = true
+			bar:StartMoving()
+	 	end
+	end)
+	bar:SetScript("OnMouseUp",function()
+		if( bar.isMoving ) then
+			bar.isMoving = nil
+			bar:StopMovingOrSizing()
+			XanUI_SaveLayout("XanUIPetHealthBar")
+		end
+	end)
+	
+ 	local barBG = bar:CreateTexture("XanUIPetHealthBar_BG", "BACKGROUND")
+	barBG:SetSize(100,10)
+	barBG:SetPoint("CENTER",bar,"CENTER")
+	barBG:SetTexture("Interface\\AddOns\\xanUI\\media\\Minimalist")
+	barBG:SetColorTexture(0.1, 0.1, 0.1, 0.6)
+
+	local petNameFont = bar:CreateFontString("XanUIPetHealthBarPetName", "OVERLAY")
+	petNameFont:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
+	petNameFont:SetPoint("RIGHT", bar, "LEFT", -5, 0)
+	bar.petname = petNameFont
+	
+	local fontstr = bar:CreateFontString("XanUIPetHealthBarPercent", "OVERLAY")
+	fontstr:SetFont("Interface\\AddOns\\xanUI\\fonts\\barframes.ttf", 12, "OUTLINE");
+	fontstr:SetPoint("LEFT", bar, "RIGHT", 5, 0)
+	bar.percentfont = fontstr
+							
+	bar:Hide()
+	
+	XanUI_RestoreLayout("XanUIPetHealthBar")
+		
+end
+
+local function pethealth(statusbar, unit)
+	if not XanUIPetHealthBar then return end
+	if unit ~= "pet" then return end
+	
+	if not UnitExists("pet") and XanUIPetHealthBar:IsVisible() then
+		XanUIPetHealthBar:Hide()
+	elseif UnitExists("pet") and not XanUIPetHealthBar:IsVisible() then
+		XanUIPetHealthBar:Show()
+	end
+	
+	if UnitIsDead("pet") then
+		XanUIPetHealthBar.petname:SetText("Dead")
+		XanUIPetHealthBar:SetValue(0)
+	else
+		setPetBarHealth()
+	end
+	
+end
+
+hooksecurefunc("UnitFrameHealthBar_Update", pethealth)
+hooksecurefunc("HealthBar_OnValueChanged", function(self)
+	pethealth(self, self.unit)
+end)
+
+----------------------------------------------------------------
 ---FACTION INDICATORS
 ----------------------------------------------------------------
 
@@ -360,6 +457,26 @@ hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
 	end
 end)
 
+--another method
+--[[ if IsAddOnLoaded("Blizzard_ObjectiveTracker") then
+    hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, "AddObjective", function(self, block, objectiveKey, text, lineType, useFullHeight, dashStyle, colorStyle, adjustForNoText)
+        local blockQuestID = block.id
+        if (block.HeaderText and blockQuestID) then
+            local i = 1
+            --get QuestTitle for blockQuestID
+            while GetQuestLogTitle(i) do
+                local questTitle, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, questID, isDaily = GetQuestLogTitle(i)
+                if (questTitle and blockQuestID and questID and level and blockQuestID == questID) then
+                    self:SetStringText(block.HeaderText, "[" .. level .. "] " .. questTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"], block.isHighlighted)
+                    break
+                end
+                i = i + 1
+            end
+        end
+    end)
+end ]]
+
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -436,172 +553,6 @@ end
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
-
-
---[[ local worldmapProvider = CreateFromMixins(MapCanvasDataProviderMixin)
-WorldMapFrame:AddDataProvider(worldmapProvider) ]]
-
--- function worldmapProvider:RefreshAllData(fromOnShow)
-    -- self:RemoveAllData()
-
-    -- for icon, data in pairs(worldmapPins) do
-        -- self:HandlePin(icon, data)
-    -- end
--- end
-
--- local function UpdateWorldMap()
-    -- worldmapProvider:RefreshAllData()
--- end
-
---xanUI_Test = {}
-
---hooksecurefunc ("ToggleWorldMap", function (self)
-
---	if (WorldMapFrame:IsShown()) then
-	
-
-	--[[ 	if WorldMapFrame then
-			-- xanUI_Test.pins = {}
-
-			-- for sourcePin in worldmapProvider:GetMap():EnumerateAllPins() do
-				-- table.insert(xanUI_Test.pins, sourcePin)
-			-- end
-
-			-- xanUI_Test.maps = worldmapProvider:GetMap():EnumerateAllPins()
-
-			xanUI_Test.default_pins = {}
-			xanUI_Test.default_state = {}
-			xanUI_Test.dataProviders = WorldMapFrame.dataProviders
-			
-			xanUI_Test.get_maps = {}
-
-			for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
-				table.insert(xanUI_Test.default_pins, dataProvider)
-				table.insert(xanUI_Test.default_state, state)
-				
-				table.insert(xanUI_Test.get_maps, dataProvider:GetMap())
-				
-				--self:GetMap():RemoveAllPinsByTemplate("DigSitePinTemplate");
-				
-				--dataProvider:GetMap():GetMapID()
-				--dataProvider:GetMap().pinPools
-				
-				--if dataProvider.RemoveAllData then
-					--dataProvider:RemoveAllData()
-				--end
-			end
-			
-			
-		end ]]
-		
---[[ 			for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
-				local mapID = dataProvider:GetMap():GetMapID()
-				local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
-				
-				if (taskInfo and #taskInfo > 0) then
-					for i, info  in ipairs (taskInfo) do
-						local questID = info.questId
-						if (HaveQuestData (questID)) then
-							local isWorldQuest = QuestUtils_IsQuestWorldQuest (questID)
-							if (isWorldQuest) then
-								Debug(mapID, questID)
-							end
-						end
-					end
-				end
-				
-			end ]]
-
---	end
-	
---end)
-
-
-
-
---[[ local function OrigProviderOnRemoved(self, mapCanvas)
-    -- temporary fix to prevent error when removing the original world quest provider, I've notified
-    -- Blizzard developers directly about this issue and it should be resolved soon™
-    local Map = self:GetMap()
-    Map:UnregisterCallback('SetFocusedQuestID', self.setFocusedQuestIDCallback)
-    Map:UnregisterCallback('ClearFocusedQuestID', self.clearFocusedQuestIDCallback)
-    Map:UnregisterCallback('SetBountyQuestID', self.setBountyQuestIDCallback)
- 
-    MapCanvasDataProviderMixin.OnRemoved(self, mapCanvas)
-end
- 
-for provider in next, WorldMapFrame.dataProviders do
-    if(provider.GetPinTemplate and provider.GetPinTemplate() == 'WorldMap_WorldQuestPinTemplate') then
-        -- BUG: the OnRemoved method is broken, so we replace it before we remove the provider
-        provider.OnRemoved = OrigProviderOnRemoved
-        WorldMapFrame:RemoveDataProvider(provider)
-    end
-end
- ]]
-
-
---[[ 
-
-xanUI_pins = {}
-xanUI_Texture = {}
-
---WorldQuestDataProviderMixin:AddWorldQuest(info)
---worldquest-icon-dungeon
-
-hooksecurefunc (WorldMapFrame, "OnMapChanged", function()
-
-	local mapID = WorldMapFrame.mapID
-
-	for dataProvider, state in pairs (WorldMapFrame.dataProviders) do
-
-		if mapID == dataProvider:GetMap():GetMapID() then
-				
-			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
-	
-			if (taskInfo and #taskInfo > 0) then
-
-				local questPins = {}
-				
-				for pin in dataProvider:GetMap():EnumerateAllPins() do
-					if pin.questID and pin.Background then
-						questPins[pin.questID] = pin
-						table.insert(xanUI_pins, pin)
-						--Debug("Background", pin.icon, pin.name, pin.Background:GetTexture())
-					end
-					
-					if pin.Texture then
-						table.insert(xanUI_Texture, pin.Texture)
-						--Debug("Underlay", pin.icon, pin.name, pin.Texture:GetTexture())
-					end
-					
-					--local filename, width, height, left, right, top, bottom, tilesHoriz, tilesVert = GetAtlasInfo("worldquest-icon-dungeon")
-					
-					--Debug(filename, width, height, left, right, top, bottom, tilesHoriz, tilesVert)
-					
-				end
-			
-				for i, info  in ipairs (taskInfo) do
-					local questID = info.questId
-					if (HaveQuestData (questID)) then
-						if questPins[questID] and questPins[questID].worldQuest then
-							--dataProvider:GetMap():RemovePin(questPins[questID])
-						end
-					end
-				end
-				
-			end
-			
-			break
-		end
-		
-	end
-
-end) ]]
-	
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-
 
 local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
 eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
@@ -704,7 +655,14 @@ function eventFrame:PLAYER_LOGIN()
 	
 	SetCVar("nameplateMaxDistance", 100) --default 60
 
-				
+	
+	--only create the pet bar for Warlock, Mage and Hunter
+	local _, class = UnitClass("player")
+	
+	if class == "HUNTER" or class == "WARLOCK" or class == "MAGE" then
+		XanUI_CreatePetBar()
+	end
+		
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
@@ -862,3 +820,133 @@ function eventFrame:MERCHANT_SHOW()
 end
 
 if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end
+
+----------------------------------------------------------------
+---Quest Rewards Check Glamour
+--For some reason this doesn't work on the quest reward plane
+----------------------------------------------------------------
+
+--https://www.townlong-yak.com/framexml/beta/GlobalStrings.lua
+
+--http://www.wowinterface.com/forums/showthread.php?t=53734
+
+--https://github.com/TorelTwiddler/CanIMogIt/blob/master/code.lua
+--C_TransmogCollection.PlayerHasTransmog(itemID[, itemAppearanceModID])
+--C_TransmogCollection.GetAppearanceInfoBySource.
+--PlayerKnowsTransmogFromItem
+
+--http://www.wowinterface.com/forums/showthread.php?t=53787
+
+local model = CreateFrame("DressUpModel")
+local lastItem, lastResult;
+ 
+-- I'm not sure if invisible frames impact game performance, resizing it just in case...
+-- Can't :Hide() the frame, because it doesn't seem to "equip" items when hidden.
+model:SetSize(1, 1)
+ 
+local PlayerHasTransmog = function(item)
+    if (not model.isPlayer) then
+        model:SetUnit("player")
+        model:Undress()
+        model.isPlayer = true;
+    end
+ 
+    if (lastItem and lastItem == item) then
+        -- Tooltip update, reuse last results
+        return lastResult
+    end
+ 
+    local isCollected = false
+ 
+    model:TryOn(item)
+ 
+	---- C_TransmogCollection.GetItemInfo(itemID, [itemModID]/itemLink/itemName) = appearanceID, sourceID
+    -- TODO: Get correct slot using GetItemInfo  (C_TransmogCollection.GetItemInfo)
+    for i = 1, 18 do
+        local appearanceSourceID = model:GetSlotTransmogSources(i)
+        if (appearanceSourceID and appearanceSourceID > 0) then
+            isCollected = select(5, C_TransmogCollection.GetAppearanceSourceInfo(appearanceSourceID)) or false
+            break
+        end
+    end 
+ 
+    model:Undress()
+ 
+    -- Cache results, TODO: Update it on transmog event, if there is one?  
+    lastItem = item
+    lastResult = isCollected
+ 
+    return isCollected
+end
+
+local doTransmogTooltip = function(objTooltip, link)
+
+    if (not link) then return end
+ 
+    local itemID = tonumber(strmatch(link, "item:(%d+)"))
+    if (not itemID) then return end
+	
+    local isDressable = IsDressableItem(itemID)
+    local _, _, canBeSource, noSourceReason = C_Transmog.GetItemInfo(itemID)
+    if (not isDressable or not canBeSource) then return end
+ 
+    local equipSlot = select(9, GetItemInfo(link))
+    if (equipSlot == "INVTYPE_NECK" or equipSlot == "INVTYPE_FINGER" or equipSlot == "INVTYPE_TRINKET") then return end
+ 
+    if (PlayerHasTransmog(link)) then
+        objTooltip:AddLine("XanUI: |cFF99CC33"..TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN.."|r", 64/255, 224/255, 208/255)
+    else
+        -- Check if Blizzard already added the text to the tooltip,
+        -- they only add it to items equippable by the current class.
+        local found = false
+        local tooltipName = objTooltip:GetName()
+        local numLines = objTooltip:NumLines()
+ 
+        for i = numLines, 1, -1 do
+            local frame = _G[tooltipName.."TextLeft"..i]
+            if (frame) then
+                local text = frame:GetText()
+                if (text and text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN) then
+                    found = true
+                    break
+                end
+            end
+        end
+ 
+        if (not found) then
+            objTooltip:AddLine("XanUI: |cFFDF2B2B"..TRANSMOGRIFY_STYLE_UNCOLLECTED.."|r", 64/255, 224/255, 208/255)
+        end
+    end
+
+end
+
+GameTooltip:HookScript("OnHide", function(self)
+	self._xanUITransmogCheck = false
+end)
+GameTooltip:HookScript("OnTooltipCleared", function(self)
+	self._xanUITransmogCheck = false
+end)
+GameTooltip:HookScript("OnTooltipSetItem", function(self)
+	if self._xanUITransmogCheck then return end
+	local name, link = self:GetItem()
+	if name and string.len(name) > 0 and link then
+		doTransmogTooltip(self, link)
+		self._xanUITransmogCheck = true
+	end
+end)
+hooksecurefunc(GameTooltip, "SetQuestLogItem", function(self, itemType, index)
+	if self._xanUITransmogCheck then return end
+	local link = GetQuestLogItemLink(itemType, index)
+	if link then
+		doTransmogTooltip(self, link)
+		self._xanUITransmogCheck = true
+	end
+end)
+hooksecurefunc(GameTooltip, "SetQuestItem", function(self, itemType, index)
+	if self._xanUITransmogCheck then return end
+	local link = GetQuestItemLink(itemType, index)
+	if link then
+		doTransmogTooltip(self, link)
+		self._xanUITransmogCheck = true
+	end
+end)

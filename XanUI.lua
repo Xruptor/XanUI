@@ -113,11 +113,13 @@ end
 	if not XanUIPetHealthBar then return end
 	local hcur, hmax = UnitHealth("pet"), UnitHealthMax("pet")
 	local hper = 0
+	
+	XanUIPetHealthBar.petname:SetText(UnitName("pet"))
+
 	if hmax > 0 then hper = hcur/hmax end
 	XanUIPetHealthBar:SetValue(hper)
 	XanUIPetHealthBar.percentfont:SetText(ceil(hper * 100).."%")
 	XanUIPetHealthBar:SetStatusBarColor(getBarColor(hcur, hmax))
-	XanUIPetHealthBar.petname:SetText(UnitName("pet"))
 end
 
 function XanUI_CreatePetBar()
@@ -338,6 +340,7 @@ end
 --GetCVarDefault("statusText") -> "0"
 
 --force Numeric for healthbar fix
+SetCVar("statusText","1")
 SetCVar("statusTextDisplay","NUMERIC")
 --InterfaceOptionsStatusTextPanelDisplayDropDown:SetValue("NUMERIC")
 
@@ -644,18 +647,36 @@ function eventFrame:PLAYER_LOGIN()
 		--add them all to a table to remove them in the future
 	end
 		
+	--OPTIONS PANEL
+	--https://github.com/tomrus88/BlizzardInterfaceCode/blob/master/Interface/FrameXML/InterfaceOptionsPanels.lua
+	
 	--NAMEPLATES
 	--http://www.wowinterface.com/forums/showthread.php?t=55998
 	SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
 	SetCVar("nameplateShowFriends", 1) -- show for friendly units
-	SetCVar("nameplateShowFriendlyNPCs", 0) --show the nameplates on friendly units as well
+	--SetCVar("nameplateShowFriendlyNPCs", 0) --show the nameplates on friendly units as well
 
+	SetCVar("nameplateShowEnemies", 1) -- Enemy
 	--SetCVar("nameplateShowEnemyMinions", 0) -- Enemy Minions
-	--SetCVar("nameplateShowEnemyMinus", 0) -- Enemy Minors
+	SetCVar("nameplateShowEnemyMinus", 1) -- Enemy Minors
 	
 	SetCVar("nameplateMaxDistance", 100) --default 60
 
+	--Hostile, Quest, and Interactive NPCs:
+	SetCVar("UnitNameFriendlySpecialNPCName", "1");
+	SetCVar("UnitNameHostleNPC", "1");
+	SetCVar("UnitNameInteractiveNPC", "1");
+	SetCVar("UnitNameNPC", "0"); --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
+	SetCVar("ShowQuestUnitCircles", "1");
 	
+	--NamePanelOptions
+	--SetCVar("UnitNameOwn", "0");
+	--SetCVar("UnitNameNonCombatCreatureName", "0");
+	SetCVar("UnitNameFriendlyPlayerName", "1");
+	SetCVar("UnitNameFriendlyMinionName", "1");
+	SetCVar("UnitNameEnemyPlayerName", "1");
+	SetCVar("UnitNameEnemyMinionName", "1");
+
 	--only create the pet bar for Warlock, Mage and Hunter
 	local _, class = UnitClass("player")
 	
@@ -820,133 +841,3 @@ function eventFrame:MERCHANT_SHOW()
 end
 
 if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end
-
-----------------------------------------------------------------
----Quest Rewards Check Glamour
---For some reason this doesn't work on the quest reward plane
-----------------------------------------------------------------
-
---https://www.townlong-yak.com/framexml/beta/GlobalStrings.lua
-
---http://www.wowinterface.com/forums/showthread.php?t=53734
-
---https://github.com/TorelTwiddler/CanIMogIt/blob/master/code.lua
---C_TransmogCollection.PlayerHasTransmog(itemID[, itemAppearanceModID])
---C_TransmogCollection.GetAppearanceInfoBySource.
---PlayerKnowsTransmogFromItem
-
---http://www.wowinterface.com/forums/showthread.php?t=53787
-
-local model = CreateFrame("DressUpModel")
-local lastItem, lastResult;
- 
--- I'm not sure if invisible frames impact game performance, resizing it just in case...
--- Can't :Hide() the frame, because it doesn't seem to "equip" items when hidden.
-model:SetSize(1, 1)
- 
-local PlayerHasTransmog = function(item)
-    if (not model.isPlayer) then
-        model:SetUnit("player")
-        model:Undress()
-        model.isPlayer = true;
-    end
- 
-    if (lastItem and lastItem == item) then
-        -- Tooltip update, reuse last results
-        return lastResult
-    end
- 
-    local isCollected = false
- 
-    model:TryOn(item)
- 
-	---- C_TransmogCollection.GetItemInfo(itemID, [itemModID]/itemLink/itemName) = appearanceID, sourceID
-    -- TODO: Get correct slot using GetItemInfo  (C_TransmogCollection.GetItemInfo)
-    for i = 1, 18 do
-        local appearanceSourceID = model:GetSlotTransmogSources(i)
-        if (appearanceSourceID and appearanceSourceID > 0) then
-            isCollected = select(5, C_TransmogCollection.GetAppearanceSourceInfo(appearanceSourceID)) or false
-            break
-        end
-    end 
- 
-    model:Undress()
- 
-    -- Cache results, TODO: Update it on transmog event, if there is one?  
-    lastItem = item
-    lastResult = isCollected
- 
-    return isCollected
-end
-
-local doTransmogTooltip = function(objTooltip, link)
-
-    if (not link) then return end
- 
-    local itemID = tonumber(strmatch(link, "item:(%d+)"))
-    if (not itemID) then return end
-	
-    local isDressable = IsDressableItem(itemID)
-    local _, _, canBeSource, noSourceReason = C_Transmog.GetItemInfo(itemID)
-    if (not isDressable or not canBeSource) then return end
- 
-    local equipSlot = select(9, GetItemInfo(link))
-    if (equipSlot == "INVTYPE_NECK" or equipSlot == "INVTYPE_FINGER" or equipSlot == "INVTYPE_TRINKET") then return end
- 
-    if (PlayerHasTransmog(link)) then
-        objTooltip:AddLine("XanUI: |cFF99CC33"..TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN.."|r", 64/255, 224/255, 208/255)
-    else
-        -- Check if Blizzard already added the text to the tooltip,
-        -- they only add it to items equippable by the current class.
-        local found = false
-        local tooltipName = objTooltip:GetName()
-        local numLines = objTooltip:NumLines()
- 
-        for i = numLines, 1, -1 do
-            local frame = _G[tooltipName.."TextLeft"..i]
-            if (frame) then
-                local text = frame:GetText()
-                if (text and text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN) then
-                    found = true
-                    break
-                end
-            end
-        end
- 
-        if (not found) then
-            objTooltip:AddLine("XanUI: |cFFDF2B2B"..TRANSMOGRIFY_STYLE_UNCOLLECTED.."|r", 64/255, 224/255, 208/255)
-        end
-    end
-
-end
-
-GameTooltip:HookScript("OnHide", function(self)
-	self._xanUITransmogCheck = false
-end)
-GameTooltip:HookScript("OnTooltipCleared", function(self)
-	self._xanUITransmogCheck = false
-end)
-GameTooltip:HookScript("OnTooltipSetItem", function(self)
-	if self._xanUITransmogCheck then return end
-	local name, link = self:GetItem()
-	if name and string.len(name) > 0 and link then
-		doTransmogTooltip(self, link)
-		self._xanUITransmogCheck = true
-	end
-end)
-hooksecurefunc(GameTooltip, "SetQuestLogItem", function(self, itemType, index)
-	if self._xanUITransmogCheck then return end
-	local link = GetQuestLogItemLink(itemType, index)
-	if link then
-		doTransmogTooltip(self, link)
-		self._xanUITransmogCheck = true
-	end
-end)
-hooksecurefunc(GameTooltip, "SetQuestItem", function(self, itemType, index)
-	if self._xanUITransmogCheck then return end
-	local link = GetQuestItemLink(itemType, index)
-	if link then
-		doTransmogTooltip(self, link)
-		self._xanUITransmogCheck = true
-	end
-end)

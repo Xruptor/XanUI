@@ -3,6 +3,8 @@
 ## Author: Xruptor
 ## Version:  3.1
 ## Notes: Adds some custom elements to the default blizzard unitframes
-## SavedVariables: XanUIDB
+## SavedVariables: XanUIDB, QuestPlateSettings
 
+QuestPlates\semlib\semlib.xml
+QuestPlates\QuestPlates.lua
 xanUI.lua

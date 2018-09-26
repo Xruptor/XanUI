@@ -334,16 +334,6 @@ function xanUI_smallNum(sNum)
 	end
 end
 
---make sure to set Status Text to Numeric Values in Interface Options for this to work
---"PERCENT" and "NUMERIC"
---GetCVarDefault("statusTextDisplay") -> "NUMERIC"
---GetCVarDefault("statusText") -> "0"
-
---force Numeric for healthbar fix
-SetCVar("statusText","1")
-SetCVar("statusTextDisplay","NUMERIC")
---InterfaceOptionsStatusTextPanelDisplayDropDown:SetValue("NUMERIC")
-
 hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
 
 	if self and self:GetParent() then
@@ -647,6 +637,16 @@ function eventFrame:PLAYER_LOGIN()
 		--add them all to a table to remove them in the future
 	end
 		
+	--make sure to set Status Text to Numeric Values in Interface Options for this to work
+	--"PERCENT" and "NUMERIC"
+	--GetCVarDefault("statusTextDisplay") -> "NUMERIC"
+	--GetCVarDefault("statusText") -> "0"
+
+	--force Numeric for healthbar fix
+	SetCVar("statusText","1")
+	SetCVar("statusTextDisplay","NUMERIC")
+	--InterfaceOptionsStatusTextPanelDisplayDropDown:SetValue("NUMERIC")
+	
 	--OPTIONS PANEL
 	--https://github.com/tomrus88/BlizzardInterfaceCode/blob/master/Interface/FrameXML/InterfaceOptionsPanels.lua
 	

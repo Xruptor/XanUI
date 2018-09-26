@@ -79,6 +79,16 @@ local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
 QuestLogIndex = {} -- [questName] = questLogIndex, this is to "quickly" look up quests from its name in the tooltip
 
+local function checkPartyShow(progressText)
+	if progressText then
+		local x, y = strmatch(progressText, '(%d+)/(%d+)')
+		if not x or (x and y and x ~= y) then
+			return true
+		end
+	end
+	return false
+end
+
 local function GetQuestProgress(unitID)
 	--if not QuestPlatesEnabled or not name then return end
 	--local guid = GUIDs[name]
@@ -96,21 +106,38 @@ local function GetQuestProgress(unitID)
 	local questTexture -- if usable item
 	local questLogIndex -- should generally be set, index usable with questlog functions
 	local questID
+	local stillShow = false
+	
 	for i = 3, QuestPlateTooltip:NumLines() do
 		local str = _G['QuestPlateTooltipTextLeft' .. i]
 		local text = str and str:GetText()
 		if not text then return end
 		questID = questID or ActiveWorldQuests[ text ]
-		local playerName, progressText = strmatch(text, '^ ([^ ]-) ?%- (.+)$') -- nil or '' if 1 is missing but 2 is there
 		
+		--(Name-Realm - 5/30 Quilboar Tusks) or (Name - 5/30 Quilboar Tusks)
+		local playerName, progressText = strmatch(text, '\s?([^ ]-) ?%- (.+)$') -- nil or '' if 1 is missing but 2 is there
+		local splitName, splitRealm = string.match(playerName or OurName, '^(.-) *%- *(.+)$') -- (Name-Realm)
+
 		-- todo: if multiple entries are present, ONLY read the quest objectives for the player
 		-- if a name is listed in the pattern then we must be in a group
-		if playerName and playerName ~= '' and playerName ~= OurName then -- quest is for another group member
+		if splitName and string.len(splitName) > 0 and splitName ~= OurName then
 			if not questType then
 				questType = 2
 			end
-		else
+			if not stillShow then
+				stillShow = checkPartyShow(progressText)
+			end
 
+		elseif playerName and string.len(playerName) > 0 and playerName ~= OurName then -- quest is for another group member
+			if not questType then
+				questType = 2
+			end
+			if not stillShow then
+				stillShow = checkPartyShow(progressText)
+			end
+
+		else
+			--it only enters here if we are a player.  if we are then it forces questType to 1 because of progressGlob down at the return
 			if progressText then
 				local x, y = strmatch(progressText, '(%d+)/(%d+)')
 				if x and y then
@@ -119,6 +146,7 @@ local function GetQuestProgress(unitID)
 						objectiveCount = numLeft
 					end
 				end
+
 				--local x, y = strmatch(progressText, '(%d+)/(%d+)$')
 				if not x or (x and y and x ~= y) then
 					progressGlob = progressGlob and progressGlob .. '\n' .. progressText or progressText
@@ -149,7 +177,7 @@ local function GetQuestProgress(unitID)
 		end
 	end
 	
-	return progressGlob, progressGlob and 1 or questType, objectiveCount, questLogIndex, questID, isWorldQuest
+	return progressGlob, progressGlob and 1 or questType, objectiveCount, questLogIndex, questID, isWorldQuest, stillShow
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -250,16 +278,16 @@ local function UpdateQuestIcon(plate, unitID)
 		return
 	end
 	
-	local progressGlob, questType, objectiveCount, questLogIndex, questID, isWorldQuest = GetQuestProgress(unitID)
-
+	local progressGlob, questType, objectiveCount, questLogIndex, questID, isWorldQuest, stillShow = GetQuestProgress(unitID)
+	
 	if progressGlob and questType ~= 2 then
 		Q.questText:SetText(progressGlob or '')
 		
-		if questType == 3 then -- todo: progress bar
+		--if questType == 3 then -- todo: progress bar
+		--	Q.iconText:SetText(objectiveCount > 0 and objectiveCount or '?')
+		--else
 			Q.iconText:SetText(objectiveCount > 0 and objectiveCount or '?')
-		else
-			Q.iconText:SetText(objectiveCount > 0 and objectiveCount or '?')
-		end
+		--end
 
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		Q.iconAlert:Show()
@@ -272,17 +300,15 @@ local function UpdateQuestIcon(plate, unitID)
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(1, .82, 0)
 			Q.iconAlert:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange much nicer
-		elseif questType == 2 then
-			Q.jellybean:SetDesaturated(true)
-			Q.iconText:SetTextColor(1, 1, 1)
-			Q.iconAlert:SetVertexColor(71/255, 183/255, 23/255, 0.9) --green tint
 		elseif questType == 3 then
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --blue tint
 		end
+		
 		Q.itemTexture:Hide()
 		Q.lootIcon:Hide()
+		
 		if questLogIndex or questID then
 			if questID then
 				for i = 1, 10 do
@@ -318,7 +344,23 @@ local function UpdateQuestIcon(plate, unitID)
 			Q:Show()
 			Q.ani:Play()
 		end
-		--Q:Show()
+
+	elseif questType == 2 and stillShow then
+			
+		Q.jellybean:SetDesaturated(true)
+		Q.iconText:SetTextColor(71/255, 183/255, 23/255, 0.9)
+		Q.iconAlert:SetVertexColor(71/255, 183/255, 23/255, 0.9) --green tint
+		Q.iconAlert:Show()
+		Q.itemTexture:Hide()
+		Q.lootIcon:Hide()
+		Q.iconText:SetText('P')
+			
+		if not Q:IsVisible() then
+			Q.ani:Stop()
+			Q:Show()
+			Q.ani:Play()
+		end
+
 	else
 		Q:Hide()
 	end	

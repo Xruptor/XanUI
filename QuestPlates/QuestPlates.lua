@@ -79,14 +79,21 @@ local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
 QuestLogIndex = {} -- [questName] = questLogIndex, this is to "quickly" look up quests from its name in the tooltip
 
-local function checkPartyShow(progressText)
+local function checkPartyShow(progressText, objectiveCount)
+
 	if progressText then
 		local x, y = strmatch(progressText, '(%d+)/(%d+)')
+		if x and y then
+			local numLeft = y - x
+			if numLeft > objectiveCount then -- track highest number of objectives
+				objectiveCount = numLeft
+			end
+		end
 		if not x or (x and y and x ~= y) then
-			return true
+			return true, objectiveCount
 		end
 	end
-	return false
+	return false, objectiveCount
 end
 
 local function GetQuestProgress(unitID)
@@ -125,7 +132,7 @@ local function GetQuestProgress(unitID)
 				questType = 2
 			end
 			if not stillShow then
-				stillShow = checkPartyShow(progressText)
+				stillShow, objectiveCount = checkPartyShow(progressText, objectiveCount)
 			end
 
 		elseif playerName and string.len(playerName) > 0 and playerName ~= OurName then -- quest is for another group member
@@ -133,7 +140,7 @@ local function GetQuestProgress(unitID)
 				questType = 2
 			end
 			if not stillShow then
-				stillShow = checkPartyShow(progressText)
+				stillShow, objectiveCount = checkPartyShow(progressText, objectiveCount)
 			end
 
 		else
@@ -264,6 +271,43 @@ function E:OnNewPlate(f, plate)
 		group:Play()
 	end)
 	
+	--healthbar checker, sometimes the health bar doesn't update properly and the health values are incorrect
+	--so check for this and update accordingly
+	local function checkHealth(self)
+		local unit
+		if self._pFrame and self._pFrame._unitID then unit = self._pFrame._unitID end
+		if self:GetParent() and self:GetParent().unit then
+			if not unit or unit ~= self:GetParent().unit then unit = self:GetParent().unit end
+		end
+		if unit then
+			local minVal, maxVal = self:GetMinMaxValues()
+			local currVal = self:GetValue()
+			local unitHealth = UnitHealth(unit)
+			local unitHealthMax = UnitHealthMax(unit)
+			
+			if minVal and maxVal and unitHealthMax and maxVal ~= unitHealthMax then
+				--Debug("updatedMinMax", unit, maxVal, unitHealthMax, UnitName(unit))
+				self:GetMinMaxValues(minVal, unitHealthMax)
+			end
+			if currVal and unitHealth and currVal ~= unitHealth then
+				--Debug("updatedHealth", unit, currVal, unitHealth, UnitName(unit))
+				self:SetValue(unitHealth)
+			end
+			--Debug('health updated', "Unit", unit, "minVal", minVal, "maxVal", maxVal, "currVal", currVal, "unitHealth", unitHealth, "unitHealthMax", unitHealthMax)
+		end
+	end
+	
+	local framePlate = plate:GetChildren()
+	
+	if framePlate and framePlate.healthBar then
+		--framePlate.castBar
+		framePlate.healthBar._pFrame = f
+		framePlate.healthBar:HookScript("OnShow", checkHealth)
+		framePlate.healthBar:HookScript("OnHide", checkHealth)
+		framePlate.healthBar:HookScript("OnValueChanged", checkHealth)
+		framePlate.healthBar:HookScript("OnUpdate", checkHealth)
+	end
+	
 end
 
 local function UpdateQuestIcon(plate, unitID)
@@ -353,7 +397,7 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconAlert:Show()
 		Q.itemTexture:Hide()
 		Q.lootIcon:Hide()
-		Q.iconText:SetText('P')
+		Q.iconText:SetText(objectiveCount > 0 and objectiveCount or 'P')
 			
 		if not Q:IsVisible() then
 			Q.ani:Stop()

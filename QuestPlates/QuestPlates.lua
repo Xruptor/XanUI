@@ -274,6 +274,7 @@ function E:OnNewPlate(f, plate)
 	--healthbar checker, sometimes the health bar doesn't update properly and the health values are incorrect
 	--so check for this and update accordingly
 	local function checkHealth(self)
+		if not CanAccessObject(self) then return end
 		local unit
 		if self._pFrame and self._pFrame._unitID then unit = self._pFrame._unitID end
 		if self:GetParent() and self:GetParent().unit then
@@ -300,6 +301,7 @@ function E:OnNewPlate(f, plate)
 	local framePlate = plate:GetChildren()
 	
 	if framePlate and framePlate.healthBar then
+		if not CanAccessObject(framePlate.healthBar) then return end
 		--framePlate.castBar
 		framePlate.healthBar._pFrame = f
 		framePlate.healthBar:HookScript("OnShow", checkHealth)

@@ -14,6 +14,7 @@ end
 
 local function colour(statusbar, unit)
 	if UnitIsPlayer(unit) and UnitIsConnected(unit) and unit == statusbar.unit and UnitClass(unit) then
+		if not CanAccessObject(statusbar) then return end
 		local _, class = UnitClass(unit)
 		local c = CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class] or RAID_CLASS_COLORS[class]
 		statusbar:SetStatusBarColor(c.r, c.g, c.b)
@@ -199,6 +200,7 @@ end)
 ----------------------------------------------------------------
 
 function xanUI_CreateFactionIcon(frame)
+	if not CanAccessObject(frame) then return end
 	local f
 	
 	f = CreateFrame("Frame", "$parentFaction", frame)
@@ -223,6 +225,7 @@ function xanUI_CreateFactionIcon(frame)
 end
 
 function xanUI_UpdateFactionIcon(unit, frame)
+	if not CanAccessObject(frame) then return end
 	if not unit then return nil end
 	if not frame then return nil end
 
@@ -292,6 +295,7 @@ specEventFrame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 function xanUI_CreateClassSpecIcons(frame)
+	if not CanAccessObject(frame) then return end
 	local f
 	
 	f = CreateFrame("Frame", "$parentClassSpec", frame)
@@ -334,8 +338,9 @@ function xanUI_smallNum(sNum)
 	end
 end
 
-hooksecurefunc( "TextStatusBar_UpdateTextString", function(self)
-
+hooksecurefunc("TextStatusBar_UpdateTextString", function(self)
+	if not CanAccessObject(self) then return end
+	
 	if self and self:GetParent() then
 		local frame = self:GetParent();
 		

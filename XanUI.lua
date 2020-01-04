@@ -171,7 +171,7 @@ function XanUI_CreatePetBar()
 		
 end
 
-local function pethealth(statusbar, unit)
+local function pethealth(frame, unit)
 	if not XanUIPetHealthBar then return end
 	if unit ~= "pet" then return end
 	
@@ -184,15 +184,24 @@ local function pethealth(statusbar, unit)
 	if UnitIsDead("pet") then
 		XanUIPetHealthBar.petname:SetText("Dead")
 		XanUIPetHealthBar:SetValue(0)
+		XanUIPetHealthBar.percentfont:SetText("0%")
 	else
 		setPetBarHealth()
 	end
-	
 end
 
 hooksecurefunc("UnitFrameHealthBar_Update", pethealth)
 hooksecurefunc("HealthBar_OnValueChanged", function(self)
 	pethealth(self, self.unit)
+end)
+
+local petUpdateFrame = CreateFrame("frame","xanUIpetUpdateFrame",UIParent)
+petUpdateFrame:SetScript("OnUpdate", function(self, elapsed)
+	self.OnUpdateCounter = (self.OnUpdateCounter or 0) + elapsed
+	if self.OnUpdateCounter < 0.05 then return end
+	self.OnUpdateCounter = 0
+
+	pethealth(self, "pet")
 end)
 
 ----------------------------------------------------------------
@@ -528,7 +537,10 @@ end
 ----------------------------------------------------------------
 ---Change Blizzard Buff timers to be more readable
 ----------------------------------------------------------------
-local SECONDS_PER_MINUTE = 60
+
+--THIS CAUSES MASSIVE TAINT ISSUES NEED TO FIND A BETTER WAY
+
+--[[ local SECONDS_PER_MINUTE = 60
 local SECONDS_PER_HOUR   = 60 * SECONDS_PER_MINUTE
 local SECONDS_PER_DAY    = 24 * SECONDS_PER_HOUR
 
@@ -546,7 +558,7 @@ function SecondsToTimeAbbrev(seconds)
 	if minutes >= 1 then return string.format("%d:%02d", minutes, seconds) end
 	return string.format("%ds", seconds)
 end
-
+ ]]
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -777,21 +789,27 @@ function eventFrame:MERCHANT_SHOW()
 	local moneyCount = 0
 	local itemCount = 0
 	
-	for bag = 0,4 do
-		for slot = 1,GetContainerNumSlots(bag) do
-			local link = GetContainerItemLink(bag, slot)
-			if link and select(3, GetItemInfo(link)) == 0 then
+	for bag = 0, 4, 1 do
+		for slot = 1, GetContainerNumSlots(bag), 1 do
+			local itemID = GetContainerItemID(bag, slot)
+			if itemID then
+				local _, link, rarity, _, _, itype, _, _, _, _, itemPrice = GetItemInfo(itemID)
+				local stackCount = select(2, GetContainerItemInfo(bag, slot)) or 1
+
+				if (rarity and rarity == 0) and (itype and itype ~= "Quest") then
 				
-				local value = select(11, GetItemInfo(link)) or 0
-				if value > 0 then
-					UseContainerItem(bag, slot)
-					moneyCount = moneyCount + value
-				else
-					PickupContainerItem(bag, slot)
-					DeleteCursorItem()
+					if itemPrice and itemPrice > 0 then
+						local stackPrice = (itemPrice or 0) * stackCount
+						moneyCount = moneyCount + stackPrice
+						UseContainerItem(bag, slot)
+						itemCount = itemCount + 1
+					else
+						--it's garbage and has no value, so delete it
+						PickupContainerItem(bag, slot)
+						DeleteCursorItem()
+					end
 				end
 				
-				itemCount = itemCount + 1
 			end
 		end
 	end
@@ -844,5 +862,3 @@ function eventFrame:MERCHANT_SHOW()
 	end
 	
 end
-
-if MerchantFrame:IsVisible() then eventFrame:MERCHANT_SHOW() end

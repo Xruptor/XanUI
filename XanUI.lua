@@ -611,6 +611,9 @@ function eventFrame:PLAYER_LOGIN()
 	
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
 
+	-- Always show missing transmogs in tooltips
+	C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
+
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
 

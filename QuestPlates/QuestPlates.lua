@@ -199,19 +199,19 @@ local function GetQuestProgress(unitID)
 				end
 			else
 				if ActiveWorldQuests[ text ] then
-					local questID = ActiveWorldQuests[ text ]
-					--Debug("Active Quest", questID, text)
-					local progress = C_TaskQuest.GetQuestProgressBarInfo(questID)
+					local qID = ActiveWorldQuests[ text ]
+					--Debug("Active Quest", qID, text)
+					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
 					if progress then
 						questType = 3 -- progress bar
-						return text, questType, ceil(100 - progress), questID
+						return text, questType, ceil(100 - progress), qID
 					end
 					--it's a world quest different color than standard quest
-					if questID then
-						local _, _, worldQuestType = GetQuestTagInfo(questID)
+					if qID then
+						local _, _, worldQuestType = GetQuestTagInfo(qID)
 						if worldQuestType then
 							isWorldQuest = true -- world quest
-							--Debug("world quest", text, questID)
+							--Debug("world quest", text, qID)
 						end
 					end
 				else
@@ -239,6 +239,7 @@ local function GetQuestProgress(unitID)
 								progressSwitch = true
 							--end
 						end
+						--string based comparison for x and y
 						if not progressSwitch then
 							if x and y and x ~= y then
 								progressGlob = progressGlob and progressGlob .. '\n' .. text or text
@@ -271,6 +272,13 @@ local function GetQuestProgress(unitID)
 	
 	local isComplete = isQuestComplete(QLIndex, questID)
 
+	--sometimes we have a questid and such but no glob, so lets force it
+	if not progressGlob and not isComplete then
+		if QLIndex or questID then
+			questType = 5
+		end
+	end
+	
 	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, QLIndex, questID, isWorldQuest, stillShow, isComplete)
 	
 	return progressGlob, progressGlob and 1 or questType, objectiveCount, QLIndex, questID, isWorldQuest, stillShow, isComplete
@@ -422,12 +430,10 @@ local function UpdateQuestIcon(plate, unitID)
 
 	if progressGlob and questType ~= 2 then
 		Q.questText:SetText(progressGlob or '')
+
+		local objText = objectiveCount > 0 and objectiveCount or '?'
 		
-		--if questType == 3 then -- todo: progress bar
-		--	Q.iconText:SetText(objectiveCount > 0 and objectiveCount or '?')
-		--else
-			Q.iconText:SetText(objectiveCount > 0 and objectiveCount or '?')
-		--end
+		Q.iconText:SetText(objText)
 
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		Q.iconAlert:Show()
@@ -444,10 +450,18 @@ local function UpdateQuestIcon(plate, unitID)
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --blue tint
+		elseif questType == 5 then
+			--this quest failed all other regular quest checks but still has some data, possibly due to an objective.
+			--the quest is obviously not completed so lets show a gray marker
+			Q.jellybean:SetDesaturated(false)
+			Q.iconText:SetTextColor(1, .82, 0)
+			Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 		end
 		
 		Q.itemTexture:Hide()
 		Q.lootIcon:Hide()
+		Q.jellybean:Hide()
+		Q.iconText:Hide()
 		
 		if questLogIndex or questID then
 			if questID then
@@ -457,6 +471,11 @@ local function UpdateQuestIcon(plate, unitID)
 					if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 						Q.lootIcon:Show()
 					end
+					--hide if objective is complete
+					if text == progressGlob and finished then
+						Q:Hide()
+						return
+					end
 				end
 			else
 				local _, _, _, _, _, _, _, questID = GetQuestLogTitle(questLogIndex)
@@ -464,6 +483,11 @@ local function UpdateQuestIcon(plate, unitID)
 					local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
 					if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 						Q.lootIcon:Show()
+					end
+					--hide if objective complete
+					if text == progressGlob and finished then
+						Q:Hide()
+						return
 					end
 				end
 			end
@@ -477,6 +501,12 @@ local function UpdateQuestIcon(plate, unitID)
 					Q.itemTexture:Hide()
 				end
 			end
+		end
+		
+		--if we don't exactly have an objective count, don't show the jellybean
+		if objText ~= '?' then
+			Q.jellybean:Show()
+			Q.iconText:Show()
 		end
 		
 		if not Q:IsVisible() then
@@ -493,8 +523,19 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconAlert:Show()
 		Q.itemTexture:Hide()
 		Q.lootIcon:Hide()
-		Q.iconText:SetText(objectiveCount > 0 and objectiveCount or 'P')
+		Q.jellybean:Hide()
+		Q.iconText:Hide()
+		
+		local objText = objectiveCount > 0 and objectiveCount or 'P'
+		
+		Q.iconText:SetText(objText)
 			
+		--if we don't exactly have an objective count, don't show the jellybean
+		if objText ~= 'P' then
+			Q.jellybean:Show()
+			Q.iconText:Show()
+		end
+		
 		if not Q:IsVisible() then
 			Q.ani:Stop()
 			Q:Show()

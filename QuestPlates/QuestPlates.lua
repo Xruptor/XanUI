@@ -147,7 +147,7 @@ local function GetQuestProgress(unitID)
 	local isWorldQuest = false
 	local objectiveCount = 0
 	local questTexture -- if usable item
-	local QLIndex -- should generally be set, index usable with questlog functions
+	local qlIndex -- should generally be set, index usable with questlog functions
 	local questID
 	local stillShow = false
 
@@ -218,7 +218,7 @@ local function GetQuestProgress(unitID)
 			
 					local data = QuestLogIndex[text]
 					if data and data[1] then
-						QLIndex = data[1]
+						qlIndex = data[1]
 					end
 					if data and data[2] then
 						questID = data[2]
@@ -249,12 +249,13 @@ local function GetQuestProgress(unitID)
 						--Debug(UnitName(unitID), x, y, text, questID, progressText, index)
 						--Debug("index", index)
 						
-						if not QLIndex or not questID then
+						--if we don't have a quest index or a questid, lets try one last time to find one in your questlog using the quest or objective text
+						if not qlIndex or not questID then
 
 							local qIndexChk, qQuestIDChk = findQuestByText(text)
 							
-							if not QLIndex and qIndexChk then
-								QLIndex = qIndexChk
+							if not qlIndex and qIndexChk then
+								qlIndex = qIndexChk
 							end
 							if not questID and qQuestIDChk then
 								questID = qQuestIDChk
@@ -270,18 +271,19 @@ local function GetQuestProgress(unitID)
 		end
 	end
 	
-	local isComplete = isQuestComplete(QLIndex, questID)
+	--check to see if the quest is complete, if so then we can avoid putting alerts on the nameplate
+	local isComplete = isQuestComplete(qlIndex, questID)
 
-	--sometimes we have a questid and such but no glob, so lets force it
+	--sometimes we have a questid and such but no glob and the quest isn't complete, so lets force it
 	if not progressGlob and not isComplete then
-		if QLIndex or questID then
-			questType = 5
+		if qlIndex or questID then
+			questType = 5 --show grey exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
 		end
 	end
 	
-	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, QLIndex, questID, isWorldQuest, stillShow, isComplete)
+	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
 	
-	return progressGlob, progressGlob and 1 or questType, objectiveCount, QLIndex, questID, isWorldQuest, stillShow, isComplete
+	return progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -421,7 +423,7 @@ local function UpdateQuestIcon(plate, unitID)
 		return
 	end
 	
-	local progressGlob, questType, objectiveCount, questLogIndex, questID, isWorldQuest, stillShow, isComplete = GetQuestProgress(unitID)
+	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete = GetQuestProgress(unitID)
 
 	if isComplete then
 		Q:Hide()
@@ -463,7 +465,7 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.jellybean:Hide()
 		Q.iconText:Hide()
 		
-		if questLogIndex or questID then
+		if qlIndex or questID then
 			if questID then
 				for i = 1, 10 do
 					local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
@@ -478,8 +480,8 @@ local function UpdateQuestIcon(plate, unitID)
 					end
 				end
 			else
-				local _, _, _, _, _, _, _, questID = GetQuestLogTitle(questLogIndex)
-				for i = 1, GetNumQuestLeaderBoards(questLogIndex) or 0 do
+				local _, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
+				for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
 					local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
 					if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 						Q.lootIcon:Show()
@@ -492,8 +494,8 @@ local function UpdateQuestIcon(plate, unitID)
 				end
 			end
 			
-			if questLogIndex then
-				local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(questLogIndex)
+			if qlIndex then
+				local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)
 				if link and itemTexture then
 					Q.itemTexture:SetTexture(itemTexture)
 					Q.itemTexture:Show()

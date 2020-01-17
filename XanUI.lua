@@ -532,6 +532,12 @@ function XanUI_RestoreLayout(frame)
 
 	_G[frame]:ClearAllPoints()
 	_G[frame]:SetPoint(opt.point, UIParent, opt.relativePoint, opt.xOfs, opt.yOfs)
+	
+	-- xpcall(self.SetPoint, geterrorhandler(), self, self.anchorPoint, self.relativeTo, self.relativePoint, xOffset, yOffset);
+	--https://github.com/WeakAuras/WeakAuras2/commit/f02d15dcf50b158e9ba08af0f34f586fdadf015f
+	--https://github.com/WeakAuras/WeakAuras2/pull/1425/commits/37c41ae0c9cf978d3151227e2c665eaf3b1cd00e
+	--https://github.com/emptyrivers/WeakAuras2/commit/823e682849d7383f33d12eb61af96c8f1037a2d2
+	
 end
 
 ----------------------------------------------------------------

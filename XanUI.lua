@@ -645,6 +645,28 @@ function eventFrame:PLAYER_LOGIN()
 	
 	--edit the character panel stats
 	xanUI_InsertStats()
+	
+	--mute ban-lu monk mount
+	MuteSoundFile(1593212)
+	MuteSoundFile(1593212)
+	MuteSoundFile(1593213)	
+	MuteSoundFile(1593214)	
+	MuteSoundFile(1593215)	
+	MuteSoundFile(1593216)
+	MuteSoundFile(1593217)	
+	MuteSoundFile(1593218)
+	MuteSoundFile(1593219)
+	MuteSoundFile(1593220)	
+	MuteSoundFile(1593221)
+	MuteSoundFile(1593222)
+	MuteSoundFile(1593223)
+	MuteSoundFile(1593224)
+	MuteSoundFile(1593225)
+	MuteSoundFile(1593226)
+	MuteSoundFile(1593227)
+	MuteSoundFile(1593228)	
+	MuteSoundFile(1593229)
+	MuteSoundFile(1593236)
 
 	if TomTom then
 		--add the Shal'Aran portal destinations because it's annoying to remember them

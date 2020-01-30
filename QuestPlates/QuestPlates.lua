@@ -54,15 +54,15 @@ do
 		DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20QuestPlates Loaded|r]")
 	end
 
-	function E:QUEST_ACCEPTED(questLogIndex, questID, ...)
+	function E:QUEST_ACCEPTED(qlIndex, questID, ...)
 		if IsQuestTask(questID) then
-			-- print('TASK_QUEST_ACCEPTED', questID, questLogIndex, GetQuestLogTitle(questLogIndex))
+			-- print('TASK_QUEST_ACCEPTED', questID, qlIndex, GetQuestLogTitle(qlIndex))
 			local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
 			if questName then
 				ActiveWorldQuests[ questName ] = questID
 			end
 		else
-			-- print('QUEST_ACCEPTED', questID, questLogIndex, GetQuestLogTitle(questLogIndex))
+			-- print('QUEST_ACCEPTED', questID, qlIndex, GetQuestLogTitle(qlIndex))
 		end
 	end
 	
@@ -79,7 +79,7 @@ end
 
 local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
-QuestLogIndex = {} -- [questName] = {questLogIndex, questID} this is to "quickly" look up quests from its name in the tooltip
+QuestLogIndex = {}
 
 local function checkPartyShow(progressText, objectiveCount)
 
@@ -112,24 +112,14 @@ local function isQuestComplete(qIndex, questID)
 	end
 end
 
-local function findQuestByText(objStr)
-
-	for i = 1, GetNumQuestLogEntries() do
-		-- for i = 1, GetNumQuestLogEntries() do if not select(4,GetQuestLogTitle(i)) and select(11,GetQuestLogTitle(i)) then QuestLogPushQuest(i) end end
-		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
-		if not isHeader then
-			if title and title == objStr then
-				return i, questID
-			end
-			for q = 1, 10 do
-				local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(q, i)
-				if description and description == objStr then
-					return i, questID
-				end
-			end
-		end
+local function tobool(obj)
+	if obj == nil then return false end
+	if tonumber(obj) and tonumber(obj) == 0 then
+		return false
+	elseif tonumber(obj) and tonumber(obj) == 1 then
+		return true
 	end
-	
+	return obj
 end
 
 local function GetQuestProgress(unitID)
@@ -147,17 +137,17 @@ local function GetQuestProgress(unitID)
 	local isWorldQuest = false
 	local objectiveCount = 0
 	local questTexture -- if usable item
-	local qlIndex -- should generally be set, index usable with questlog functions
-	local questID
 	local stillShow = false
-
+	local questIDList = {}
+	local qlIndex
+	local questID
+	local lastIndex
+	
 --old is for i=3
 	for i = 2, QuestPlateTooltip:NumLines() do
 		local str = _G['QuestPlateTooltipTextLeft' .. i]
 		local text = str and str:GetText()
 		if not text then return end
-		
-		questID = questID or ActiveWorldQuests[ text ]
 		
 		--(Name-Realm - 5/30 Quilboar Tusks) or (Name - 5/30 Quilboar Tusks)
 		local playerName, progressText = strmatch(text, '\s?([^ ]-) ?%- (.+)$') -- nil or '' if 1 is missing but 2 is there
@@ -199,6 +189,7 @@ local function GetQuestProgress(unitID)
 				end
 			else
 				if ActiveWorldQuests[ text ] then
+
 					local qID = ActiveWorldQuests[ text ]
 					--Debug("Active Quest", qID, text)
 					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
@@ -215,15 +206,7 @@ local function GetQuestProgress(unitID)
 						end
 					end
 				else
-			
-					local data = QuestLogIndex[text]
-					if data and data[1] then
-						qlIndex = data[1]
-					end
-					if data and data[2] then
-						questID = data[2]
-					end
-					
+
 					local progressSwitch = false
 					
 					if text ~= nil then
@@ -245,45 +228,70 @@ local function GetQuestProgress(unitID)
 								progressGlob = progressGlob and progressGlob .. '\n' .. text or text
 							end
 						end
-				
-						--Debug(UnitName(unitID), x, y, text, questID, progressText, index)
-						--Debug("index", index)
-						
-						--if we don't have a quest index or a questid, lets try one last time to find one in your questlog using the quest or objective text
-						if not qlIndex or not questID then
-
-							local qIndexChk, qQuestIDChk = findQuestByText(text)
-							
-							if not qlIndex and qIndexChk then
-								qlIndex = qIndexChk
-							end
-							if not questID and qQuestIDChk then
-								questID = qQuestIDChk
-							end
-						
-						end
-						
 					end
-
-					
 				end
+				
 			end
 		end
+		
+		local qIndexChk
+		local qQuestIDChk				
+		local isComplete
+		
+		local data = QuestLogIndex[text]
+		--if not by quest title try the objectives
+		if not data then data = QuestObjectiveStrings[text] end
+		
+		if data then
+			if data.qlIndex then
+				qIndexChk = data.qlIndex
+			end
+			if data.questID then
+				qQuestIDChk = data.questID
+			end
+			if data.isComplete then
+				isComplete = tobool(data.isComplete)
+			end
+		end
+
+		--only insert the questID once if found, we don't need to add for each objective
+		if lastIndex ~= qIndexChk and qIndexChk and qQuestIDChk then
+			if isComplete == nil then
+				isComplete = isQuestComplete(qIndexChk, qQuestIDChk) or false
+			end
+			table.insert(questIDList, {name = text, qlIndex = qIndexChk, questID = qQuestIDChk, isComplete = isComplete} )
+			lastIndex = qIndexChk
+		end
+			
 	end
 	
 	--check to see if the quest is complete, if so then we can avoid putting alerts on the nameplate
-	local isComplete = isQuestComplete(qlIndex, questID)
-
+	local markCompleted = false
+	
+	--sort table so false is last, that way the last thing that is marked is false.  If everything is true then the last thing will be marked true
+	--this is because there aren't any more false
+	if questIDList and #questIDList > 0 then
+		table.sort(questIDList, function(a, b) return a.isComplete and not b.isComplete end)
+		
+		for i = 1, #questIDList do
+			qlIndex = questIDList[i].qlIndex
+			questID = questIDList[i].questID
+			markCompleted = questIDList[i].isComplete
+		end
+	else
+		--nothing to show
+		markCompleted = true
+	end
+	
 	--sometimes we have a questid and such but no glob and the quest isn't complete, so lets force it
-	if not progressGlob and not isComplete then
+	if not progressGlob and not markCompleted then
 		if qlIndex or questID then
 			questType = 5 --show grey exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
 		end
 	end
-	
+
 	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
-	
-	return progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete
+	return progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -436,7 +444,6 @@ local function UpdateQuestIcon(plate, unitID)
 		local objText = objectiveCount > 0 and objectiveCount or '?'
 		
 		Q.iconText:SetText(objText)
-
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		Q.iconAlert:Show()
 		
@@ -465,43 +472,21 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.jellybean:Hide()
 		Q.iconText:Hide()
 		
-		if qlIndex or questID then
-			if questID then
-				for i = 1, 10 do
-					local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
-					if not text then break end
-					if not finished and (objectiveType == 'item' or objectiveType == 'object') then
-						Q.lootIcon:Show()
-					end
-					--hide if objective is complete
-					if text == progressGlob and finished then
-						Q:Hide()
-						return
-					end
-				end
-			else
-				local _, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
-				for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
-					local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
-					if not finished and (objectiveType == 'item' or objectiveType == 'object') then
-						Q.lootIcon:Show()
-					end
-					--hide if objective complete
-					if text == progressGlob and finished then
-						Q:Hide()
-						return
-					end
+		if qlIndex then
+			local _, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
+			for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
+				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
+				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
+					Q.lootIcon:Show()
 				end
 			end
 			
-			if qlIndex then
-				local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)
-				if link and itemTexture then
-					Q.itemTexture:SetTexture(itemTexture)
-					Q.itemTexture:Show()
-				else
-					Q.itemTexture:Hide()
-				end
+			local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)
+			if link and itemTexture then
+				Q.itemTexture:SetTexture(itemTexture)
+				Q.itemTexture:Show()
+			else
+				Q.itemTexture:Hide()
 			end
 		end
 		
@@ -560,11 +545,12 @@ local function CacheQuestIndexes()
 		-- for i = 1, GetNumQuestLogEntries() do if not select(4,GetQuestLogTitle(i)) and select(11,GetQuestLogTitle(i)) then QuestLogPushQuest(i) end end
 		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
 		if not isHeader then
-			QuestLogIndex[title] = {i, questID}
-			for objectiveID = 1, GetNumQuestLeaderBoards(i) or 0 do
-				local objectiveText, objectiveType, finished, numFulfilled, numRequired = GetQuestObjectiveInfo(questID, objectiveID, false)
-				if objectiveText then
-					QuestObjectiveStrings[ title .. objectiveText ] = {questID, objectiveID}
+			QuestLogIndex[title] = {qlIndex = i, questID = questID, isComplete = isComplete}
+			for q = 1, GetNumQuestLeaderBoards(i) do
+				local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(q, i)
+				--local objectiveText, objectiveType, finished, numFulfilled, numRequired = GetQuestObjectiveInfo(questID, objectiveID, false)
+				if description then
+					QuestObjectiveStrings[description] = {qlIndex = i, questID = questID, isComplete = isCompleted, objID = q}
 				end
 			end
 		end

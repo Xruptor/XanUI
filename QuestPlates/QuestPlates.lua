@@ -287,11 +287,12 @@ local function GetQuestProgress(unitID)
 	if not progressGlob and not markCompleted then
 		if qlIndex or questID then
 			questType = 5 --show grey exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
+			progressGlob = "Unknown Quest Obj"
 		end
 	end
 
 	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
-	return progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
+	return progressGlob, questType or progressGlob and 1, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -474,11 +475,22 @@ local function UpdateQuestIcon(plate, unitID)
 		
 		if qlIndex then
 			local _, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
+			local finishedObj = true
+			
 			for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
 				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
 				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 					Q.lootIcon:Show()
 				end
+				--hide if objective complete
+				if string.find(progressGlob, text) and not finished then
+					finishedObj = false
+				end
+			end
+			--all objectives complete so lets just hide it
+			if finishedObj then
+				Q:Hide()
+				return
 			end
 			
 			local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)

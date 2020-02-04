@@ -474,9 +474,9 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconText:Hide()
 		
 		if qlIndex then
-			local _, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
+			local nameX, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
 			local finishedObj = true
-			
+
 			for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
 				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
 				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
@@ -485,8 +485,15 @@ local function UpdateQuestIcon(plate, unitID)
 				--hide if objective complete
 				if string.find(progressGlob, text) and not finished then
 					finishedObj = false
+					break
+				--sometimes we have optional objectives that aren't covered, lets give it a special color
+				elseif string.find(text, "(Optional)") and not finished then
+					finishedObj = false
+					Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
+					break
 				end
 			end
+
 			--all objectives complete so lets just hide it
 			if finishedObj then
 				Q:Hide()

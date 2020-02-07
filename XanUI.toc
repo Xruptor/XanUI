@@ -5,6 +5,11 @@
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB, QuestPlateSettings
 
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+libs\AceTimer-3.0\AceTimer-3.0.xml
+
 QuestPlates\semlib\semlib.xml
 QuestPlates\QuestPlates.lua
+
 xanUI.lua

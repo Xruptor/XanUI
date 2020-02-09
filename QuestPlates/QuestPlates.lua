@@ -189,13 +189,12 @@ local function GetQuestProgress(unitID)
 				end
 			else
 				if ActiveWorldQuests[ text ] then
-
 					local qID = ActiveWorldQuests[ text ]
 					--Debug("Active Quest", qID, text)
 					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
 					if progress then
 						questType = 3 -- progress bar
-						return text, questType, ceil(100 - progress), qID
+						return text, questType, ceil(100 - progress), nil, qID
 					end
 					--it's a world quest different color than standard quest
 					if qID then
@@ -448,7 +447,8 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		Q.iconAlert:Show()
 		
-		if isWorldQuest then
+		--if it's not a power world quest but it's still a world quest
+		if questType ~= 3 and isWorldQuest then
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(9/255, 218/255, 224/255, 0.9) --blueish tint
@@ -457,6 +457,7 @@ local function UpdateQuestIcon(plate, unitID)
 			Q.iconText:SetTextColor(1, .82, 0)
 			Q.iconAlert:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange much nicer
 		elseif questType == 3 then
+			--its a power gain type world quest
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --blue tint
@@ -473,23 +474,57 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.jellybean:Hide()
 		Q.iconText:Hide()
 		
-		if qlIndex then
-			local nameX, _, _, _, _, _, _, questID = GetQuestLogTitle(qlIndex)
-			local finishedObj = true
+		--make sure we have a questID to work with
+		if qlIndex and not questID then
+			local xName, _, _, _, _, _, _, xQuestID = GetQuestLogTitle(qlIndex)
+			if xQuestID then questID = xQuestID end
+		end
 
-			for i = 1, GetNumQuestLeaderBoards(qlIndex) or 0 do
+		if questID then
+			local finishedObj = true
+			
+			--don't use GetNumQuestLeaderBoards, it sometimes fails and returns 0, just use a huge number and break on nil
+			--I highly doubt there will ever be 50 objectives for a quest
+			for i = 1, 50 do
 				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
+				if not text then break end
+				
 				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 					Q.lootIcon:Show()
 				end
-				--hide if objective complete
-				if string.find(progressGlob, text) and not finished then
+
+				--check to see if the text matches our progress, that means it was only one objective
+				if progressGlob == text and not finished then
+					finishedObj = false
+					break
+				--check to see if ANY of our objective text is in our progressGlob
+				elseif string.find(progressGlob, text) and not finished then
 					finishedObj = false
 					break
 				--sometimes we have optional objectives that aren't covered, lets give it a special color
 				elseif string.find(text, "(Optional)") and not finished then
 					finishedObj = false
 					Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
+					break
+				--check for special cases of progressbar quests
+				elseif not finished and objectiveType == 'progressbar' then
+					finishedObj = false
+					--some type of world quest or quest with progress that has a weirdo quest objective text
+					--since it's not finished, just show it anyways
+					break
+				--check for special world quest cases of progressbar quests
+				elseif not finished and questType == 3 then
+					finishedObj = false
+					--with the progressbar quest types since we can't really grab the missing objective and just return the quest title
+					--this will always fail the objective text check.  In these scenarios, lets see if we are not done in any objective.
+					--if we aren't then show it anyways
+					break
+				--something we are missing, so show it anyways if it's not finished
+				elseif not finished then
+					finishedObj = false
+					--this is a catch all that we must have forgotten SOMETHING with this quest.
+					--in this case lets show the bogus weird color for the objective
+					Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 					break
 				end
 			end
@@ -500,12 +535,15 @@ local function UpdateQuestIcon(plate, unitID)
 				return
 			end
 			
-			local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)
-			if link and itemTexture then
-				Q.itemTexture:SetTexture(itemTexture)
-				Q.itemTexture:Show()
-			else
-				Q.itemTexture:Hide()
+			--only do this if we have a questIndex
+			if qlIndex then
+				local link, itemTexture, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(qlIndex)
+				if link and itemTexture then
+					Q.itemTexture:SetTexture(itemTexture)
+					Q.itemTexture:Show()
+				else
+					Q.itemTexture:Hide()
+				end
 			end
 		end
 		
@@ -565,12 +603,12 @@ local function CacheQuestIndexes()
 		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
 		if not isHeader then
 			QuestLogIndex[title] = {qlIndex = i, questID = questID, isComplete = isComplete}
-			for q = 1, GetNumQuestLeaderBoards(i) do
+			--I highly doubt there will ever be 50 objectives for a quest, just break on no description
+			for q = 1, 50 do
 				local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(q, i)
+				if not description then break end
 				--local objectiveText, objectiveType, finished, numFulfilled, numRequired = GetQuestObjectiveInfo(questID, objectiveID, false)
-				if description then
-					QuestObjectiveStrings[description] = {qlIndex = i, questID = questID, isComplete = isCompleted, objID = q}
-				end
+				QuestObjectiveStrings[description] = {qlIndex = i, questID = questID, isComplete = isCompleted, objID = q}
 			end
 		end
 	end

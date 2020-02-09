@@ -190,12 +190,7 @@ local function GetQuestProgress(unitID)
 			else
 				if ActiveWorldQuests[ text ] then
 					local qID = ActiveWorldQuests[ text ]
-					--Debug("Active Quest", qID, text)
-					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
-					if progress then
-						questType = 3 -- progress bar
-						return text, questType, ceil(100 - progress), nil, qID
-					end
+					
 					--it's a world quest different color than standard quest
 					if qID then
 						local _, _, worldQuestType = GetQuestTagInfo(qID)
@@ -204,6 +199,20 @@ local function GetQuestProgress(unitID)
 							--Debug("world quest", text, qID)
 						end
 					end
+					
+					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
+					if progress then
+						--it's a world quest
+						if isWorldQuest then
+							questType = 3 -- progress bar, do world quest color
+							return text, questType, ceil(100 - progress), nil, qID
+						else
+							--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
+							questType = 4 -- progress bar (special case)
+							return text, questType, ceil(100 - progress), nil, qID
+						end
+					end
+
 				else
 
 					local progressSwitch = false
@@ -291,7 +300,12 @@ local function GetQuestProgress(unitID)
 	end
 
 	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
-	return progressGlob, questType or progressGlob and 1, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
+	
+	if not questType and progressGlob then
+		--we don't have a questtype but we have a glob so default to 1
+		questType = 1
+	end
+	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -461,6 +475,11 @@ local function UpdateQuestIcon(plate, unitID)
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --blue tint
+		elseif questType == 4 then
+			--its a power gain quest but isn't a world quest.  Probably a "Bonus Objective", show a lighter orange
+			Q.jellybean:SetDesaturated(false)
+			Q.iconText:SetTextColor(1, .82, 0)
+			Q.iconAlert:SetVertexColor(1, 181/255, 17/255, 0.9) --show orange much nicer
 		elseif questType == 5 then
 			--this quest failed all other regular quest checks but still has some data, possibly due to an objective.
 			--the quest is obviously not completed so lets show a gray marker
@@ -513,7 +532,7 @@ local function UpdateQuestIcon(plate, unitID)
 					--since it's not finished, just show it anyways
 					break
 				--check for special world quest cases of progressbar quests
-				elseif not finished and questType == 3 then
+				elseif not finished and questType == 3 or questType == 4 then
 					finishedObj = false
 					--with the progressbar quest types since we can't really grab the missing objective and just return the quest title
 					--this will always fail the objective text check.  In these scenarios, lets see if we are not done in any objective.

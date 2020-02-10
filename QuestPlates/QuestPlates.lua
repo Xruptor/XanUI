@@ -495,6 +495,7 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconText:SetText(objText)
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		Q.iconAlert:SetSize(16, 32) --reset size
+		Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1") --reset the texture
 		Q.iconAlert:Show()
 		
 		--if it's not a power world quest but it's still a world quest
@@ -586,32 +587,18 @@ local function UpdateQuestIcon(plate, unitID)
 				--last ditch effort check, store it for ultimate check, make sure that finishedQuest is still set to true and hasn't been set to false in previous checks
 				elseif not finished and finishedQuest then
 					stillUnfinished = true
-				
 				end
-					
-				--these will always cause it to show something, since it will break at first correct unfinished
-				
-				-- --our last check for stuff we know, check our stored objectives and see if anything matches, if it does, check if it's not finished
-				-- elseif QuestObjectiveStrings[progressGlob] or QuestObjectiveStrings[text] and not finished then
-					-- finishedQuest = false
-					-- break
-				-- --last ditch effort check, something we are missing, so show it anyways if it's not finished
-				-- elseif not finished then
-					-- finishedQuest = false
-					-- --this is a catch all that we must have forgotten SOMETHING with this quest.
-					-- --in this case lets show the bogus weird color for the objective
-					-- Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
-					-- break
+
 			end
 
 			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
 			--this causes it to show finished tooltips as grey icons even if there are other objectives that aren't done
+			--but we will use a smaller tiny arrow to folks know
 			if finishedQuest and stillUnfinished and (objCount >= 1 or globCount >= 1) then
 				finishedQuest = false
-				--set it as unknown grey
 				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_2") --change to small other arrow, not big one
-				Q.iconAlert:SetSize(12, 16) --make it smaller
+				Q.iconAlert:SetSize(10, 16) --make it smaller
 			end
 
 			--all objectives complete so lets just hide it

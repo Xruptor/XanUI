@@ -535,7 +535,8 @@ local function UpdateQuestIcon(plate, unitID)
 			local xName, _, _, _, _, _, _, xQuestID = GetQuestLogTitle(qlIndex)
 			if xQuestID then questID = xQuestID end
 		end
-
+		
+		--if we still don't have questID then it will show a red question mark because it's default, sort of a catch all if we have qlIndex
 		if questID then
 			local finishedQuest = true
 			local stillUnfinished = false
@@ -594,11 +595,16 @@ local function UpdateQuestIcon(plate, unitID)
 			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
 			--this causes it to show finished tooltips as grey icons even if there are other objectives that aren't done
 			--but we will use a smaller tiny arrow to folks know
-			if finishedQuest and stillUnfinished and (objCount >= 1 or globCount >= 1) then
+			if finishedQuest and stillUnfinished and (objCount > 1 or globCount > 1) then
 				finishedQuest = false
 				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_2") --change to small other arrow, not big one
 				Q.iconAlert:SetSize(10, 16) --make it smaller
+			elseif finishedQuest and stillUnfinished and (objCount <= 1 or globCount <= 1) then
+				--single objective quest that was marked as unfinished for some reason
+				--use standard quest objective marker and regular size
+				finishedQuest = false
+				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 			end
 
 			--all objectives complete so lets just hide it

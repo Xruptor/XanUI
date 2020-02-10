@@ -33,25 +33,33 @@ local ActiveWorldQuests = {
 	-- [questName] = questID ?
 }
 
-do
-	function E:PLAYER_LOGIN()
-		-- local areaID = GetCurrentMapAreaID()
-		local uiMapID = C_Map.GetBestMapForUnit('player')
-		if uiMapID then
-			for k, task in pairs(C_TaskQuest.GetQuestsForPlayerByMapID(uiMapID) or {}) do
-				if task.inProgress then
-					-- track active world quests
-					local questID = task.questId
-					local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-					if questName then
-						-- print(k, questID, questName)
-						ActiveWorldQuests[ questName ] = questID
-					end
+local function doQuestCheck()
+	-- local areaID = GetCurrentMapAreaID()
+	local uiMapID = C_Map.GetBestMapForUnit('player')
+	if uiMapID then
+		for k, task in pairs(C_TaskQuest.GetQuestsForPlayerByMapID(uiMapID) or {}) do
+			if task.inProgress then
+				-- track active world quests
+				local questID = task.questId
+				local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
+				if questName then
+					-- print(k, questID, questName)
+					ActiveWorldQuests[ questName ] = questID
 				end
 			end
 		end
-		
+	end
+end
+
+do
+	function E:PLAYER_LOGIN()
+		doQuestCheck()
 		DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20QuestPlates Loaded|r]")
+	end
+	
+	--this is if the world frame was refreshed or the user did a /reload etc..
+	function addon:UI_SCALE_CHANGED()
+		doQuestCheck()
 	end
 
 	function E:QUEST_ACCEPTED(qlIndex, questID, ...)
@@ -80,6 +88,7 @@ end
 local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
 QuestLogIndex = {}
+QuestObjectiveStrings = {}
 
 local function checkPartyShow(progressText, objectiveCount)
 
@@ -133,6 +142,7 @@ local function GetQuestProgress(unitID)
 	QuestPlateTooltip:SetUnit(unitID)
 	
 	local progressGlob -- concatenated glob of quest text
+	local globCount = 0
 	local questType -- 1 for player, 2 for group
 	local isWorldQuest = false
 	local objectiveCount = 0
@@ -142,6 +152,8 @@ local function GetQuestProgress(unitID)
 	local qlIndex
 	local questID
 	local lastIndex
+	local lastQuestID
+	local questText
 	
 --old is for i=3
 	for i = 2, QuestPlateTooltip:NumLines() do
@@ -186,6 +198,7 @@ local function GetQuestProgress(unitID)
 				--local x, y = strmatch(progressText, '(%d+)/(%d+)$')
 				if not x or (x and y and x ~= y) then
 					progressGlob = progressGlob and progressGlob .. '\n' .. progressText or progressText
+					globCount = globCount + 1
 				end
 			else
 				if ActiveWorldQuests[ text ] then
@@ -217,26 +230,26 @@ local function GetQuestProgress(unitID)
 
 					local progressSwitch = false
 					
-					if text ~= nil then
-			
-						local x, y = strmatch(text, '(%d+)/(%d+)')
-						if x and y and tonumber(x) and tonumber(y) then
-							local numLeft = y - x
-							if numLeft > objectiveCount then -- track highest number of objectives
-								objectiveCount = numLeft
-							end
-							--if objectiveCount > 0 then
-								progressGlob = progressGlob and progressGlob .. '\n' .. text or text
-								progressSwitch = true
-							--end
+					local x, y = strmatch(text, '(%d+)/(%d+)')
+					if x and y and tonumber(x) and tonumber(y) then
+						local numLeft = y - x
+						if numLeft > objectiveCount then -- track highest number of objectives
+							objectiveCount = numLeft
 						end
-						--string based comparison for x and y
-						if not progressSwitch then
-							if x and y and x ~= y then
-								progressGlob = progressGlob and progressGlob .. '\n' .. text or text
-							end
+						--if objectiveCount > 0 then
+							progressGlob = progressGlob and progressGlob .. '\n' .. text or text
+							globCount = globCount + 1
+							progressSwitch = true
+						--end
+					end
+					--string based comparison for x and y
+					if not progressSwitch then
+						if x and y and x ~= y then
+							progressGlob = progressGlob and progressGlob .. '\n' .. text or text
+							globCount = globCount + 1
 						end
 					end
+
 				end
 				
 			end
@@ -263,14 +276,15 @@ local function GetQuestProgress(unitID)
 		end
 
 		--only insert the questID once if found, we don't need to add for each objective
-		if lastIndex ~= qIndexChk and qIndexChk and qQuestIDChk then
+		if (lastQuestID ~= qQuestIDChk or lastIndex ~= qIndexChk) and qIndexChk and qQuestIDChk then
 			if isComplete == nil then
 				isComplete = isQuestComplete(qIndexChk, qQuestIDChk) or false
 			end
 			table.insert(questIDList, {name = text, qlIndex = qIndexChk, questID = qQuestIDChk, isComplete = isComplete} )
 			lastIndex = qIndexChk
+			lastQuestID = qQuestIDChk
 		end
-			
+	
 	end
 	
 	--check to see if the quest is complete, if so then we can avoid putting alerts on the nameplate
@@ -282,30 +296,51 @@ local function GetQuestProgress(unitID)
 		table.sort(questIDList, function(a, b) return a.isComplete and not b.isComplete end)
 		
 		for i = 1, #questIDList do
+			questText = questIDList[i].name
 			qlIndex = questIDList[i].qlIndex
 			questID = questIDList[i].questID
 			markCompleted = questIDList[i].isComplete
+			--Debug(questIDList[i].name, qlIndex, questID, markCompleted)
 		end
 	else
 		--nothing to show
 		markCompleted = true
 	end
 	
+	------
+	--btw we check for questType so not to overwrite the PARTY questType of 2 or any other assigned questType already
+	------
+	
+	--check for bonus objectives that aren't classified as a world quest, technically it will not pickup the progressglob above as it would fail
+	--it would fail because it's a progress one and not a collection one like 1/10
+	if questID and not markCompleted and not questType then
+		--check for bonus objectives that aren't classified as a world quest
+		local progress = C_TaskQuest.GetQuestProgressBarInfo(questID)
+		if progress then
+			--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
+			questType = 4 -- progress bar (special case)
+			return questText, questType, ceil(100 - progress), nil, questID
+		end
+	end
+	
 	--sometimes we have a questid and such but no glob and the quest isn't complete, so lets force it
-	if not progressGlob and not markCompleted then
+	if not progressGlob and not markCompleted and not questType then
 		if qlIndex or questID then
 			questType = 5 --show grey exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
-			progressGlob = "Unknown Quest Obj"
+			--we HAVE to put something in progressGlob for it to even pass checks further down
+			progressGlob = "Unknown or Invalid Quest"
+			globCount = globCount + 1
 		end
 	end
 
-	--Debug(progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
-	
-	if not questType and progressGlob then
-		--we don't have a questtype but we have a glob so default to 1
+	--if we get to this point and we have a progressglob and it's not completed, then it's just a regular quest.  So mark it as 1
+	if progressGlob and string.len(progressGlob) > 1 and not questType then
+		--its a regular quest, just mark it as 1
 		questType = 1
 	end
-	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted
+	
+	--Debug(questText, progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted, globCount
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -445,7 +480,7 @@ local function UpdateQuestIcon(plate, unitID)
 		return
 	end
 	
-	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete = GetQuestProgress(unitID)
+	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete, globCount = GetQuestProgress(unitID)
 
 	if isComplete then
 		Q:Hide()
@@ -459,6 +494,7 @@ local function UpdateQuestIcon(plate, unitID)
 		
 		Q.iconText:SetText(objText)
 		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
+		Q.iconAlert:SetSize(16, 32) --reset size
 		Q.iconAlert:Show()
 		
 		--if it's not a power world quest but it's still a world quest
@@ -500,7 +536,9 @@ local function UpdateQuestIcon(plate, unitID)
 		end
 
 		if questID then
-			local finishedObj = true
+			local finishedQuest = true
+			local stillUnfinished = false
+			local objCount = 0
 			
 			--don't use GetNumQuestLeaderBoards, it sometimes fails and returns 0, just use a huge number and break on nil
 			--I highly doubt there will ever be 50 objectives for a quest
@@ -508,48 +546,76 @@ local function UpdateQuestIcon(plate, unitID)
 				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
 				if not text then break end
 				
+				objCount = objCount + 1
+				
 				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 					Q.lootIcon:Show()
 				end
 
 				--check to see if the text matches our progress, that means it was only one objective
 				if progressGlob == text and not finished then
-					finishedObj = false
+					finishedQuest = false
 					break
 				--check to see if ANY of our objective text is in our progressGlob
 				elseif string.find(progressGlob, text) and not finished then
-					finishedObj = false
+					finishedQuest = false
 					break
 				--sometimes we have optional objectives that aren't covered, lets give it a special color
 				elseif string.find(text, "(Optional)") and not finished then
-					finishedObj = false
+					finishedQuest = false
 					Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
-					break
-				--check for special cases of progressbar quests
-				elseif not finished and objectiveType == 'progressbar' then
-					finishedObj = false
-					--some type of world quest or quest with progress that has a weirdo quest objective text
-					--since it's not finished, just show it anyways
 					break
 				--check for special world quest cases of progressbar quests
 				elseif not finished and questType == 3 or questType == 4 then
-					finishedObj = false
+					finishedQuest = false
 					--with the progressbar quest types since we can't really grab the missing objective and just return the quest title
 					--this will always fail the objective text check.  In these scenarios, lets see if we are not done in any objective.
 					--if we aren't then show it anyways
 					break
-				--something we are missing, so show it anyways if it's not finished
-				elseif not finished then
-					finishedObj = false
-					--this is a catch all that we must have forgotten SOMETHING with this quest.
-					--in this case lets show the bogus weird color for the objective
-					Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
+				--check for special cases of progressbar quests
+				elseif not finished and objectiveType == 'progressbar' then
+					finishedQuest = false
+					--some type of world quest or quest with progress that has a weirdo quest objective text
+					--since it's not finished, just show it anyways
 					break
+				--check for unknown quest progress
+				elseif not finished and questType == 5 then
+					finishedQuest = false
+					break
+				
+				--last ditch effort check, store it for ultimate check, make sure that finishedQuest is still set to true and hasn't been set to false in previous checks
+				elseif not finished and finishedQuest then
+					stillUnfinished = true
+				
 				end
+					
+				--these will always cause it to show something, since it will break at first correct unfinished
+				
+				-- --our last check for stuff we know, check our stored objectives and see if anything matches, if it does, check if it's not finished
+				-- elseif QuestObjectiveStrings[progressGlob] or QuestObjectiveStrings[text] and not finished then
+					-- finishedQuest = false
+					-- break
+				-- --last ditch effort check, something we are missing, so show it anyways if it's not finished
+				-- elseif not finished then
+					-- finishedQuest = false
+					-- --this is a catch all that we must have forgotten SOMETHING with this quest.
+					-- --in this case lets show the bogus weird color for the objective
+					-- Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
+					-- break
+			end
+
+			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
+			--this causes it to show finished tooltips as grey icons even if there are other objectives that aren't done
+			if finishedQuest and stillUnfinished and (objCount >= 1 or globCount >= 1) then
+				finishedQuest = false
+				--set it as unknown grey
+				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
+				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_2") --change to small other arrow, not big one
+				Q.iconAlert:SetSize(12, 16) --make it smaller
 			end
 
 			--all objectives complete so lets just hide it
-			if finishedObj then
+			if finishedQuest then
 				Q:Hide()
 				return
 			end
@@ -614,9 +680,9 @@ function E:OnPlateShow(f, plate, unitID)
 	UpdateQuestIcon(plate, unitID)
 end
 
-QuestObjectiveStrings = {}
 local function CacheQuestIndexes()
 	wipe(QuestLogIndex)
+	wipe(QuestObjectiveStrings)
 	for i = 1, GetNumQuestLogEntries() do
 		-- for i = 1, GetNumQuestLogEntries() do if not select(4,GetQuestLogTitle(i)) and select(11,GetQuestLogTitle(i)) then QuestLogPushQuest(i) end end
 		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)

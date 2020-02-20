@@ -3,6 +3,10 @@ local function Debug(...)
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
 end
 
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+--don't run this if it's not retail
+if not IsRetail then return end
+
 --------------------
 -- ICON SETTINGS
 
@@ -249,7 +253,6 @@ local function GetQuestProgress(unitID)
 							globCount = globCount + 1
 						end
 					end
-
 				end
 				
 			end
@@ -311,6 +314,8 @@ local function GetQuestProgress(unitID)
 	--btw we check for questType so not to overwrite the PARTY questType of 2 or any other assigned questType already
 	------
 	
+	--Debug('initial', questText, progressGlob, questType, qlIndex, questID)
+	
 	--check for bonus objectives that aren't classified as a world quest, technically it will not pickup the progressglob above as it would fail
 	--it would fail because it's a progress one and not a collection one like 1/10
 	if questID and not markCompleted and not questType then
@@ -326,7 +331,7 @@ local function GetQuestProgress(unitID)
 	--sometimes we have a questid and such but no glob and the quest isn't complete, so lets force it
 	if not progressGlob and not markCompleted and not questType then
 		if qlIndex or questID then
-			questType = 5 --show grey exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
+			questType = 5 --show rose color exclamation mark since we don't fully know if it's a legit mob to mark (sort of a failsafe)
 			--we HAVE to put something in progressGlob for it to even pass checks further down
 			progressGlob = "Unknown or Invalid Quest"
 			globCount = globCount + 1
@@ -339,12 +344,36 @@ local function GetQuestProgress(unitID)
 		questType = 1
 	end
 	
-	--Debug(questText, progressGlob, progressGlob and 1 or questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	--FOR SCENARIOS
+	--Blizzard_ScenarioObjectiveTracker.lua
+	--------------------------------------
+	-- local stageName, stageDescription, numCriteria, _, _, _, _, numSpells, spellInfo, weightedProgress, _, widgetSetID = C_Scenario.GetStepInfo();
+	-- local inChallengeMode = (scenarioType == LE_SCENARIO_TYPE_CHALLENGE_MODE);
+	-- local inProvingGrounds = (scenarioType == LE_SCENARIO_TYPE_PROVING_GROUNDS);
+	-- local dungeonDisplay = (scenarioType == LE_SCENARIO_TYPE_USE_DUNGEON_DISPLAY);
+	-- local inWarfront = (scenarioType == LE_SCENARIO_TYPE_WARFRONT);
+	-- local scenariocompleted = currentStage > numStages;
+	
+	-- for criteriaIndex = 1, numCriteria do
+		-- local criteriaString, criteriaType, completed, quantity, totalQuantity, flags, assetID, quantityString, criteriaID, duration, elapsed, _, isWeightedProgress = C_Scenario.GetCriteriaInfo(criteriaIndex);
+		
+	-- function ScenarioTrackerProgressBar_GetProgress(self)
+		-- if (self.criteriaIndex) then
+			-- return select(4, C_Scenario.GetCriteriaInfo(self.criteriaIndex)) or 0;
+		-- else
+			-- return select(10, C_Scenario.GetStepInfo()) or 0;
+		-- end
+	-- end
+	--------------------------------------
+	
+	--Debug(questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
 	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted, globCount
 end
 
 local QuestPlates = {} -- [plate] = f
 function E:OnNewPlate(f, plate)
+	--if a plate is restricted and cannot be used, lets avoid taints and errors
+	if plate:IsForbidden() then return end
 	local frame = CreateFrame('frame', nil, f)
 	frame:Hide()
 	frame:SetAllPoints(f)
@@ -469,6 +498,7 @@ function E:OnNewPlate(f, plate)
 end
 
 local function UpdateQuestIcon(plate, unitID)
+	if plate:IsForbidden() then return end
 	local Q = QuestPlates[plate]
 	local unitID = unitID or addon:GetUnitForPlate(plate)
 	if not Q then return end
@@ -493,7 +523,7 @@ local function UpdateQuestIcon(plate, unitID)
 		local objText = objectiveCount > 0 and objectiveCount or '?'
 		
 		Q.iconText:SetText(objText)
-		Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
+		Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --default slate gray tint
 		Q.iconAlert:SetSize(16, 32) --reset size
 		Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1") --reset the texture
 		Q.iconAlert:Show()
@@ -516,13 +546,14 @@ local function UpdateQuestIcon(plate, unitID)
 			--its a power gain quest but isn't a world quest.  Probably a "Bonus Objective", show a lighter orange
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(1, .82, 0)
-			Q.iconAlert:SetVertexColor(1, 181/255, 17/255, 0.9) --show orange much nicer
+			Q.iconAlert:SetVertexColor(1, 181/255, 17/255, 0.9) --show a lighter orange almost gold color
 		elseif questType == 5 then
 			--this quest failed all other regular quest checks but still has some data, possibly due to an objective.
-			--the quest is obviously not completed so lets show a gray marker
+			--the quest is obviously not completed so lets show a rose color marker
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(1, .82, 0)
-			Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
+			Q.iconAlert:SetVertexColor(1, 60/255, 56/255, 0.9) --rose color
+			--Q.iconAlert:SetVertexColor(1, 0.1, 0.1, 0.9) --default red
 		end
 		
 		Q.itemTexture:Hide()
@@ -536,7 +567,7 @@ local function UpdateQuestIcon(plate, unitID)
 			if xQuestID then questID = xQuestID end
 		end
 		
-		--if we still don't have questID then it will show a red question mark because it's default, sort of a catch all if we have qlIndex
+		--if we still don't have questID then it will show a red exclamation mark because it's default, sort of a catch all if we have qlIndex
 		if questID then
 			local finishedQuest = true
 			local stillUnfinished = false
@@ -553,9 +584,15 @@ local function UpdateQuestIcon(plate, unitID)
 				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
 					Q.lootIcon:Show()
 				end
+				
+				--Debug('obj', progressGlob, text, objectiveType, finished)
 
 				--check to see if the text matches our progress, that means it was only one objective
 				if progressGlob == text and not finished then
+					--check for optional, just in case
+					if string.find(text, "(Optional)")	then
+						Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
+					end
 					finishedQuest = false
 					break
 				--check to see if ANY of our objective text is in our progressGlob
@@ -588,23 +625,36 @@ local function UpdateQuestIcon(plate, unitID)
 				--last ditch effort check, store it for ultimate check, make sure that finishedQuest is still set to true and hasn't been set to false in previous checks
 				elseif not finished and finishedQuest then
 					stillUnfinished = true
+					--don't break let it run through all objectives, just in case
 				end
 
 			end
 
+			--Debug('isFinished?', finishedQuest, stillUnfinished, questType, objCount, progressGlob)
+			
 			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
-			--this causes it to show finished tooltips as grey icons even if there are other objectives that aren't done
+			--this causes it to show finished tooltips as gray icons even if there are other objectives that aren't done
 			--but we will use a smaller tiny arrow to folks know
 			if finishedQuest and stillUnfinished and (objCount > 1 or globCount > 1) then
 				finishedQuest = false
 				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_2") --change to small other arrow, not big one
 				Q.iconAlert:SetSize(10, 16) --make it smaller
-			elseif finishedQuest and stillUnfinished and (objCount <= 1 or globCount <= 1) then
+			elseif finishedQuest and stillUnfinished then
 				--single objective quest that was marked as unfinished for some reason
-				--use standard quest objective marker and regular size
+				--It could be a Scenario, grabbing objectives from that is different than quest objectives
+				--catch all just in case we have a quest that isn't finished and show it anyways
+				--just use the optional fel green color
 				finishedQuest = false
-				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
+				Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
+			end
+			
+			--lets check to see if they are in an scenario, if so then always show a particular color
+			local inInstance, instanceType = IsInInstance()
+			if instanceType == "scenario" then
+				Q.iconAlert:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange
+				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1") --reset the texture
+				Q.iconAlert:SetSize(16, 32) --reset size
 			end
 
 			--all objectives complete so lets just hide it
@@ -651,12 +701,8 @@ local function UpdateQuestIcon(plate, unitID)
 		local objText = objectiveCount > 0 and objectiveCount or 'P'
 		
 		Q.iconText:SetText(objText)
-			
-		--if we don't exactly have an objective count, don't show the jellybean
-		if objText ~= 'P' then
-			Q.jellybean:Show()
-			Q.iconText:Show()
-		end
+		Q.jellybean:Show()
+		Q.iconText:Show()
 		
 		if not Q:IsVisible() then
 			Q.ani:Stop()
@@ -670,6 +716,7 @@ local function UpdateQuestIcon(plate, unitID)
 end
 
 function E:OnPlateShow(f, plate, unitID)
+	if plate:IsForbidden() then return end
 	UpdateQuestIcon(plate, unitID)
 end
 
@@ -679,7 +726,9 @@ local function CacheQuestIndexes()
 	for i = 1, GetNumQuestLogEntries() do
 		-- for i = 1, GetNumQuestLogEntries() do if not select(4,GetQuestLogTitle(i)) and select(11,GetQuestLogTitle(i)) then QuestLogPushQuest(i) end end
 		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
-		if not isHeader then
+		--isBounty is the world map bounty quests.  also known as daily emissary quests
+		--lets not record those, they are hidden anyways
+		if not isHeader and not isBounty then
 			QuestLogIndex[title] = {qlIndex = i, questID = questID, isComplete = isComplete}
 			--I highly doubt there will ever be 50 objectives for a quest, just break on no description
 			for q = 1, 50 do

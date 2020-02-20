@@ -5,6 +5,9 @@
 -- 	-- respond to ADDON_LOADED event
 -- end
 --------
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+--don't run this if it's not retail
+if not IsRetail then return end
 
 -- setmetatable({}, {__index = function(self, event) self[event] = {} return self[event] end})
 local F, Events, A, T = CreateFrame('frame'), {}, ...

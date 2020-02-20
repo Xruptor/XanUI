@@ -3,6 +3,8 @@
 	Don't say I didn't warn you!
 --]]
 
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+
 ----------------------------------------------------------------
 ---COLOR BARS BY CLASS
 ----------------------------------------------------------------
@@ -34,9 +36,10 @@ addon:SetScript("OnEvent", function()
 	colour(sb, "mouseover")
 end)
 
--- Always show missing transmogs in tooltips
-C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
-
+if IsRetail then
+	-- Always show missing transmogs in tooltips
+	C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
+end
 ----------------------------------------------------------------
 ---ADD Missing stats to the character panel
 ----------------------------------------------------------------
@@ -278,6 +281,8 @@ xanUI_CreateFactionIcon(TargetFrameToT)
 local specEventFrame = CreateFrame("Frame")
 
 function xanUI_UpdateClassSpecIcon()
+	if not IsRetail then return end
+	
 	getglobal("TargetFrameClassSpec"):Hide()
 	if CanInspect("target") then
 		specEventFrame:RegisterEvent("INSPECT_READY")
@@ -286,6 +291,7 @@ function xanUI_UpdateClassSpecIcon()
 end
 
 specEventFrame:SetScript("OnEvent", function(self, event, ...)
+	if not IsRetail then return end
 	
 	if UnitIsPlayer("target") then
 	
@@ -305,6 +311,8 @@ specEventFrame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 function xanUI_CreateClassSpecIcons(frame)
+	if not IsRetail then return end
+	
 	if not CanAccessObject(frame) then return end
 	local f
 	
@@ -448,23 +456,26 @@ end
 --SHOW Quest level information on the quest tracker
 --Color it by level as well if necessary
 
-hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
-	for i = 1, GetNumQuestWatches() do
-		local questID, title, questLogIndex, numObjectives, requiredMoney, isComplete, startEvent, isAutoComplete, failureTime, timeElapsed, questType, isTask, isStory, isOnMap, hasLocalPOI = GetQuestWatchInfo(i)
-		if ( not questID ) then
-			break
-		end
-		local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questID)
-		if oldBlock then
-			local oldBlockHeight = oldBlock.height
-			local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
-			local newTitle = "["..select(2, GetQuestLogTitle(questLogIndex)).."] "..title
-			local newHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, newTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"])
-			oldBlock:SetHeight(oldBlockHeight + newHeight - oldHeight);
-		end
-	end
-end)
+if IsRetail then
 
+	hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
+		for i = 1, GetNumQuestWatches() do
+			local questID, title, questLogIndex, numObjectives, requiredMoney, isComplete, startEvent, isAutoComplete, failureTime, timeElapsed, questType, isTask, isStory, isOnMap, hasLocalPOI = GetQuestWatchInfo(i)
+			if ( not questID ) then
+				break
+			end
+			local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questID)
+			if oldBlock then
+				local oldBlockHeight = oldBlock.height
+				local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
+				local newTitle = "["..select(2, GetQuestLogTitle(questLogIndex)).."] "..title
+				local newHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, newTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"])
+				oldBlock:SetHeight(oldBlockHeight + newHeight - oldHeight);
+			end
+		end
+	end)
+
+end
 --another method
 --[[ if IsAddOnLoaded("Blizzard_ObjectiveTracker") then
     hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, "AddObjective", function(self, block, objectiveKey, text, lineType, useFullHeight, dashStyle, colorStyle, adjustForNoText)
@@ -618,9 +629,6 @@ function eventFrame:PLAYER_LOGIN()
 	
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
 
-	-- Always show missing transmogs in tooltips
-	C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
-
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills;
 
@@ -630,12 +638,10 @@ function eventFrame:PLAYER_LOGIN()
 	TargetFrameToT:ClearAllPoints()
 	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 100, -45);
 	
-	--Move the FocusFrameToT Frame to the right of the Focus frame
-	FocusFrameToT:ClearAllPoints()
-	FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
 
 	--hide the stupid blizzard boss frames
 	if XanUIDB.hidebossframes then
+		if not IsRetail then return end
 		for i = 1, 4 do
 			local frame = _G["Boss"..i.."TargetFrame"]
 			frame:UnregisterAllEvents()
@@ -644,32 +650,42 @@ function eventFrame:PLAYER_LOGIN()
 		end
 	end
 	
-	--edit the character panel stats
-	xanUI_InsertStats()
+	if IsRetail then
 	
-	--mute ban-lu monk mount
-	MuteSoundFile(1593212)
-	MuteSoundFile(1593212)
-	MuteSoundFile(1593213)	
-	MuteSoundFile(1593214)	
-	MuteSoundFile(1593215)	
-	MuteSoundFile(1593216)
-	MuteSoundFile(1593217)	
-	MuteSoundFile(1593218)
-	MuteSoundFile(1593219)
-	MuteSoundFile(1593220)	
-	MuteSoundFile(1593221)
-	MuteSoundFile(1593222)
-	MuteSoundFile(1593223)
-	MuteSoundFile(1593224)
-	MuteSoundFile(1593225)
-	MuteSoundFile(1593226)
-	MuteSoundFile(1593227)
-	MuteSoundFile(1593228)	
-	MuteSoundFile(1593229)
-	MuteSoundFile(1593236)
-
-	if TomTom then
+		--Move the FocusFrameToT Frame to the right of the Focus frame
+		FocusFrameToT:ClearAllPoints()
+		FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
+	
+		-- Always show missing transmogs in tooltips
+		C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
+		
+		--edit the character panel stats
+		xanUI_InsertStats()
+		
+		--mute ban-lu monk mount
+		MuteSoundFile(1593212)
+		MuteSoundFile(1593212)
+		MuteSoundFile(1593213)	
+		MuteSoundFile(1593214)	
+		MuteSoundFile(1593215)	
+		MuteSoundFile(1593216)
+		MuteSoundFile(1593217)	
+		MuteSoundFile(1593218)
+		MuteSoundFile(1593219)
+		MuteSoundFile(1593220)	
+		MuteSoundFile(1593221)
+		MuteSoundFile(1593222)
+		MuteSoundFile(1593223)
+		MuteSoundFile(1593224)
+		MuteSoundFile(1593225)
+		MuteSoundFile(1593226)
+		MuteSoundFile(1593227)
+		MuteSoundFile(1593228)	
+		MuteSoundFile(1593229)
+		MuteSoundFile(1593236)
+	end
+	
+	if TomTom and IsRetail then
 		--add the Shal'Aran portal destinations because it's annoying to remember them
 		--crazy is for the crazy arrow, setting cleardistance allows the waypoint to persist even when you go near it.  Otherwise it gets removed when you approach.
 		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 39.1/100, 76.3/100, { title = "Portal: Felsoul Hold", crazy=false, persistent=true, cleardistance=0 }) )
@@ -712,11 +728,13 @@ function eventFrame:PLAYER_LOGIN()
 	SetCVar("nameplateMaxDistance", 100) --default 60
 
 	--Hostile, Quest, and Interactive NPCs:
-	SetCVar("UnitNameFriendlySpecialNPCName", "1");
-	SetCVar("UnitNameHostleNPC", "1");
-	SetCVar("UnitNameInteractiveNPC", "1");
+	if IsRetail then
+		SetCVar("UnitNameFriendlySpecialNPCName", "1");
+		SetCVar("UnitNameHostleNPC", "1");
+		SetCVar("UnitNameInteractiveNPC", "1");
+		SetCVar("ShowQuestUnitCircles", "1");
+	end
 	SetCVar("UnitNameNPC", "0"); --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
-	SetCVar("ShowQuestUnitCircles", "1");
 	
 	--NamePanelOptions
 	--SetCVar("UnitNameOwn", "0");

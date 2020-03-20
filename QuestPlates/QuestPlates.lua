@@ -366,7 +366,7 @@ local function GetQuestProgress(unitID)
 	-- end
 	--------------------------------------
 	
-	--Debug(questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	--Debug(UnitName(unitID), questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
 	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted, globCount
 end
 
@@ -516,6 +516,17 @@ local function UpdateQuestIcon(plate, unitID)
 		Q:Hide()
 		return
 	end
+	
+	local inInstance, instanceType = IsInInstance()
+	if inInstance and instanceType == "raid" and XanUIDB and not XanUIDB.raidplates then
+		--hide the plates
+		if not plate:IsForbidden() and CanAccessObject(plate) then
+			plate:Hide()
+			Q:Hide()
+			return
+		end
+	end
+
 
 	if progressGlob and questType ~= 2 then
 		Q.questText:SetText(progressGlob or '')
@@ -585,7 +596,8 @@ local function UpdateQuestIcon(plate, unitID)
 					Q.lootIcon:Show()
 				end
 				
-				--Debug('obj', progressGlob, text, objectiveType, finished)
+				--Debug('obj', progressGlob, UnitName(unitID))
+				--Debug('obj', progressGlob, text, objectiveType, finished, UnitName(unitID))
 
 				--check to see if the text matches our progress, that means it was only one objective
 				if progressGlob == text and not finished then
@@ -593,6 +605,10 @@ local function UpdateQuestIcon(plate, unitID)
 					if string.find(text, "(Optional)")	then
 						Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
 					end
+					finishedQuest = false
+					break
+				--do plaintext search
+				elseif string.find(progressGlob, text, 1, true) and not finished then
 					finishedQuest = false
 					break
 				--check to see if ANY of our objective text is in our progressGlob
@@ -630,7 +646,7 @@ local function UpdateQuestIcon(plate, unitID)
 
 			end
 
-			--Debug('isFinished?', finishedQuest, stillUnfinished, questType, objCount, progressGlob)
+			--Debug('isFinished?', finishedQuest, stillUnfinished, questType, objCount, progressGlob, UnitName(unitID))
 			
 			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
 			--this causes it to show finished tooltips as gray icons even if there are other objectives that aren't done
@@ -729,6 +745,11 @@ local function CacheQuestIndexes()
 		--isBounty is the world map bounty quests.  also known as daily emissary quests
 		--lets not record those, they are hidden anyways
 		if not isHeader and not isBounty then
+			--LE_QUEST_TAG_TYPE_FACTION_ASSAULT 
+			--local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
+			--print(title, questID, worldQuestType, tagID, tagName)
+			--C_QuestLog.IsThreatQuest
+		
 			QuestLogIndex[title] = {qlIndex = i, questID = questID, isComplete = isComplete}
 			--I highly doubt there will ever be 50 objectives for a quest, just break on no description
 			for q = 1, 50 do

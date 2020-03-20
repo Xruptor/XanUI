@@ -30,9 +30,9 @@ hooksecurefunc("HealthBar_OnValueChanged", function(self)
 end)
 
 local sb = _G.GameTooltipStatusBar
-local addon = CreateFrame("Frame", "StatusColour")
-addon:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
-addon:SetScript("OnEvent", function()
+local colorEventFrame = CreateFrame("Frame", "StatusColour")
+colorEventFrame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+colorEventFrame:SetScript("OnEvent", function()
 	colour(sb, "mouseover")
 end)
 
@@ -40,6 +40,9 @@ if IsRetail then
 	-- Always show missing transmogs in tooltips
 	C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
 end
+
+--/framestack in game lets you see frame information
+
 ----------------------------------------------------------------
 ---ADD Missing stats to the character panel
 ----------------------------------------------------------------
@@ -103,7 +106,7 @@ end
 ----------------------------------------------------------------
 ---Movable Pet Healthbar
 ----------------------------------------------------------------
- local function getBarColor(hcur, hmax)
+local function getBarColor(hcur, hmax)
 	local r
 	local g = 1
 	local cur = 2 * hcur/hmax
@@ -114,7 +117,7 @@ end
 	end
 end
 
- local function setPetBarHealth()
+local function setPetBarHealth()
 	if not XanUIPetHealthBar then return end
 	local hcur, hmax = UnitHealth("pet"), UnitHealthMax("pet")
 	local hper = 0
@@ -500,6 +503,71 @@ end ]]
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
+--Add achievement green checkmarks on achivements the current character has completed.
+--makes it easier to see it on achievement list quickly without using the stupid tooltip
+local achGreenCheckLoaded = false
+local achGreenChkList = {}
+
+local function AchUpdateChecks()
+	local i, icon
+	for i, icon in pairs(achGreenChkList) do
+
+		local achievement = icon:GetParent()
+		local achievementID = achievement.id
+
+		if achievementID and achievement:IsShown() then
+			local _, _, _, completed, _, _, _, _, _, _, _, isGuild, wasEarnedByMe = GetAchievementInfo(achievementID)
+			if wasEarnedByMe then
+				icon:Show()
+			else
+				icon:Hide()
+			end
+		else
+			icon:Hide()
+		end
+	end
+end
+
+local function AchGreenChkSetup()
+	if achGreenCheckLoaded then return end
+
+	for i=1,100 do 
+		local prefix = "AchievementFrameAchievementsContainerButton"..i
+		local button = _G[prefix]
+		if not button then break end
+
+		local chkFrame = CreateFrame("Frame", "", button)
+		chkFrame:SetSize(24,24)
+		chkFrame:SetPoint("TOPRIGHT", button, "TOPRIGHT", -67, -5)
+		--chkFrame:SetPoint("TOPRIGHT", button, "TOPRIGHT", -50, -5)
+		chkFrame:SetFrameLevel(button.shield:GetFrameLevel()+1)
+		chkFrame.greenChk = chkFrame:CreateTexture("","OVERLAY")
+		chkFrame.greenChk:SetAllPoints(true)
+		chkFrame.greenChk:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+		
+		button.xanUIGreenChk = chkFrame
+		achGreenChkList[i] = chkFrame
+		
+	end
+
+	local achievescroll = _G['AchievementFrameAchievementsContainer']
+	hooksecurefunc("HybridScrollFrame_Update",function(scrollframe) if scrollframe==achievescroll then AchUpdateChecks() end end)
+
+	achievescroll:HookScript("OnVerticalScroll", AchUpdateChecks)
+	achievescroll:HookScript("OnMouseWheel", AchUpdateChecks)
+	achievescroll.scrollDown:HookScript("OnClick", AchUpdateChecks)
+	achievescroll.scrollUp:HookScript("OnClick", AchUpdateChecks)
+
+	achGreenCheckLoaded = true
+end
+
+hooksecurefunc("ToggleAchievementFrame", function() AchGreenChkSetup() end)
+
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+----------------------------------------------------------------
+
 function XanUI_SaveLayout(frame)
 	if type(frame) ~= "string" then return end
 	if not _G[frame] then return end
@@ -585,15 +653,17 @@ end
 local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
 eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 
-eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("UNIT_TARGET")
+eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 
 local TomTomWPS = {}
 
 function eventFrame:PLAYER_LOGIN()
 	if not XanUIDB then XanUIDB = {} end
-	if not XanUIDB["hidebossframes"] then XanUIDB["hidebossframes"] = false end
+	if not XanUIDB.hidebossframes then XanUIDB.hidebossframes = false end
+	if not XanUIDB.raidplates then XanUIDB.raidplates = false end
 
 	local ver = GetAddOnMetadata("xanUI","Version") or 0
 		
@@ -619,11 +689,21 @@ function eventFrame:PLAYER_LOGIN()
 					end
 				end
 				return true
+			elseif c and c:lower() == "raidplates" then
+				if XanUIDB.raidplates then
+					XanUIDB.raidplates = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Raid Nameplates are now [|cFF99CC33OFF|r]")
+				else
+					XanUIDB.raidplates = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Raid Nameplates are now [|cFF99CC33ON|r]")
+				end
+				return true
 			end
 		end
 
 		DEFAULT_CHAT_FRAME:AddMessage("xanUI")
 		DEFAULT_CHAT_FRAME:AddMessage("/xanui hidebossframes - Toggles Hiding Blizzard Boss Health Frames On or Off")
+		DEFAULT_CHAT_FRAME:AddMessage("/xanui raidplates - Toggles Raid Nameplates On or Off")
 
 	end
 	
@@ -750,8 +830,14 @@ function eventFrame:PLAYER_LOGIN()
 	if class == "HUNTER" or class == "WARLOCK" or class == "MAGE" then
 		XanUI_CreatePetBar()
 	end
-		
+	
+	XanUI_SetupTalkingHeadSilence()
+	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
+end
+
+function eventFrame:ADDON_LOADED(event, addonName)
+	XanUI_SetupTalkingHeadSilence(addonName)
 end
 
 function eventFrame:PLAYER_TARGET_CHANGED()
@@ -765,6 +851,57 @@ function eventFrame:UNIT_TARGET(self, unitid)
 		xanUI_UpdateFactionIcon("targettarget", TargetFrameToT)
 	end
 	
+end
+
+----------------------------------------------------------------
+---Shows talking head dialogue only once per session, don't spam it constantly
+----------------------------------------------------------------
+
+eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+
+local talkingHeadDB = {}
+local lastTalkingVO
+
+function eventFrame:TALKINGHEAD_REQUESTED()
+	local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
+	
+	-- if (talkingHeadDB[vo]) then
+		-- C_Timer.After(1, TalkingHeadFrame_CloseImmediately)
+	-- else
+		-- talkingHeadDB[vo] = true
+	-- end
+	
+	local inInstance, instanceType = IsInInstance()
+	
+	--only do the talking head filtering in instances, in outside world for quests and stuff don't filter it
+	if inInstance and vo then
+		if not talkingHeadDB[vo] then
+			_G.TalkingHeadFrame_PlayCurrent()
+			talkingHeadDB[vo] = true
+		else
+			--don't spam the notice
+			if not lastTalkingVO or lastTalkingVO ~= vo then
+				DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
+				lastTalkingVO = vo
+			end
+		end
+	else
+		_G.TalkingHeadFrame_PlayCurrent()
+	end
+end
+
+function XanUI_SetupTalkingHeadSilence(addonName)
+	LoadAddOn("Blizzard_TalkingHeadUI") 
+	
+	if addonName and addonName == "Blizzard_TalkingHeadUI" then
+		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
+		return
+	end
+	
+	if _G.TalkingHeadFrame or IsAddOnLoaded("Blizzard_TalkingHeadUI") then
+		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
+	end
+
 end
 
 ----------------------------------------------------------------
@@ -956,3 +1093,91 @@ function eventFrame:MERCHANT_SHOW()
 	end
 	
 end
+
+--https://github.com/Gethe/wow-ui-source/blob/2ca215b373e6107bdc7f1e2715fc0c2ec4720a14/AddOns/Blizzard_InspectUI/InspectPaperDollFrame.lua
+--DressUpSources(C_TransmogCollection.GetInspectSources());
+
+-- function TransmogOutfitGetTransmog(slot)
+	-- local transmog
+	-- local baseSourceID, _, appliedSourceID, _, pendingSourceID, _, hasPendingUndo = C_Transmog.GetSlotVisualInfo(slot, LE_TRANSMOG_TYPE_APPEARANCE)
+	-- if hasPendingUndo then
+		-- transmog = baseSourceID
+	-- elseif pendingSourceID ~= 0 then
+		-- transmog = pendingSourceID
+	-- elseif appliedSourceID ~= 0 then
+		-- transmog = appliedSourceID
+	-- else
+		-- transmog = baseSourceID
+	-- end
+	-- return transmog
+-- end
+
+-- function TransmogOutfitSetTransmog(slot, transmog)
+	-- local _, _, _, canTransmogrify = C_Transmog.GetSlotInfo(slot, LE_TRANSMOG_TYPE_APPEARANCE)
+	-- if canTransmogrify then
+		-- C_Transmog.SetPending(slot, LE_TRANSMOG_TYPE_APPEARANCE, transmog)
+	-- end
+-- end
+
+-- function TransmogOutfitGetEnchant(slot)
+	-- local enchant
+	-- local baseSourceID, _, appliedSourceID, _, pendingSourceID, _, hasPendingUndo = C_Transmog.GetSlotVisualInfo(slot, LE_TRANSMOG_TYPE_ILLUSION)
+	-- if hasPendingUndo then
+		-- enchant = baseSourceID
+	-- elseif pendingSourceID ~= 0 then
+		-- enchant = pendingSourceID
+	-- elseif appliedSourceID ~= 0 then
+		-- enchant = appliedSourceID
+	-- else
+		-- enchant = baseSourceID
+	-- end
+	-- return enchant
+-- end
+
+-- function TransmogOutfitSetEnchant(slot, enchant)
+	-- local _, _, _, canTransmogrify = C_Transmog.GetSlotInfo(slot, LE_TRANSMOG_TYPE_ILLUSION)
+	-- if canTransmogrify then
+		-- C_Transmog.SetPending(slot, LE_TRANSMOG_TYPE_ILLUSION, enchant)
+	-- end
+-- end
+
+
+-- SLASH_LOC1 = "/loc";
+-- SlashCmdList["LOC"] = function(arg)
+    -- local id = C_Map.GetBestMapForUnit("player")
+    -- if not id then
+        -- print("No");
+        -- return;
+    -- end
+
+    -- local pos = C_Map.GetPlayerMapPosition(id, "player");
+    -- if not pos then
+        -- print("No");
+        -- return;
+    -- end
+    -- local x,y = pos:GetXY();
+    -- local output = string.format("%s:%.2f,%.2f",GetZoneText(),x100,y100);
+
+    -- if arg == 'say' then
+        -- SendChatMessage(output, "SAY");
+    -- elseif arg == 'party' then
+        -- SendChatMessage(output, "PARTY");
+    -- elseif arg == 'raid' then
+        -- SendChatMessage(output, "RAID");
+    -- elseif arg == 'general' then
+        -- local channelId;
+        -- for i=1,20,1 do
+            -- local id, name = GetChannelName(i);
+            -- if(string.find(name:lower(), "general") ~= nil) then
+                -- channelId = i;
+                -- break;
+            -- end
+        -- end
+        -- SendChatMessage(output, "CHANNEL", nil, channelId);
+    -- else
+        -- print(output);
+    -- end
+ -- end 
+ 
+ 
+ -- /run local x, y = GetPlayerMapPosition("player") SendChatMessage(("%s is up at %s (%0.1f, %0.1f)"):format(UnitName("target"), GetMinimapZoneText(), x*100, y*100), "CHANNEL", nil, 1)

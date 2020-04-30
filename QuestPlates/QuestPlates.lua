@@ -135,6 +135,13 @@ local function tobool(obj)
 	return obj
 end
 
+local function isObjSafe(obj)
+	local inInstance, instanceType = IsInInstance()
+	if inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
+	if not CanAccessObject(obj) then return false end --check if you can even touch the plate
+	return true
+end
+
 local function GetQuestProgress(unitID)
 	--if not QuestPlatesEnabled or not name then return end
 	--local guid = GUIDs[name]
@@ -372,8 +379,10 @@ end
 
 local QuestPlates = {} -- [plate] = f
 function E:OnNewPlate(f, plate)
+	
 	--if a plate is restricted and cannot be used, lets avoid taints and errors
-	if plate:IsForbidden() then return end
+	if not isObjSafe(plate) then return end
+	
 	local frame = CreateFrame('frame', nil, f)
 	frame:Hide()
 	frame:SetAllPoints(f)
@@ -459,7 +468,7 @@ function E:OnNewPlate(f, plate)
 	--healthbar checker, sometimes the health bar doesn't update properly and the health values are incorrect
 	--so check for this and update accordingly
 	local function checkHealth(self)
-		if not CanAccessObject(self) then return end
+		if not isObjSafe(self) then return end
 		local unit
 		if self._pFrame and self._pFrame._unitID then unit = self._pFrame._unitID end
 		if self:GetParent() and self:GetParent().unit then
@@ -486,7 +495,7 @@ function E:OnNewPlate(f, plate)
 	local framePlate = plate:GetChildren()
 	
 	if framePlate and framePlate.healthBar then
-		if not CanAccessObject(framePlate.healthBar) then return end
+		if not isObjSafe(framePlate.healthBar) then return end
 		--framePlate.castBar
 		framePlate.healthBar._pFrame = f
 		framePlate.healthBar:HookScript("OnShow", checkHealth)
@@ -498,7 +507,10 @@ function E:OnNewPlate(f, plate)
 end
 
 local function UpdateQuestIcon(plate, unitID)
-	if plate:IsForbidden() then return end
+
+	--if a plate is restricted and cannot be used, lets avoid taints and errors
+	if not isObjSafe(plate) then return end
+	
 	local Q = QuestPlates[plate]
 	local unitID = unitID or addon:GetUnitForPlate(plate)
 	if not Q then return end
@@ -516,17 +528,6 @@ local function UpdateQuestIcon(plate, unitID)
 		Q:Hide()
 		return
 	end
-	
-	local inInstance, instanceType = IsInInstance()
-	if inInstance and instanceType == "raid" and XanUIDB and not XanUIDB.raidplates then
-		--hide the plates
-		if not plate:IsForbidden() and CanAccessObject(plate) then
-			plate:Hide()
-			Q:Hide()
-			return
-		end
-	end
-
 
 	if progressGlob and questType ~= 2 then
 		Q.questText:SetText(progressGlob or '')
@@ -732,7 +733,9 @@ local function UpdateQuestIcon(plate, unitID)
 end
 
 function E:OnPlateShow(f, plate, unitID)
-	if plate:IsForbidden() then return end
+	--if a plate is restricted and cannot be used, lets avoid taints and errors
+	if not isObjSafe(plate) then return end
+	
 	UpdateQuestIcon(plate, unitID)
 end
 

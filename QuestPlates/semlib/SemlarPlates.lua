@@ -11,6 +11,14 @@ local E = addon:Eve()
 local Nameplates = {} -- [plate] = f, holds all nameplate frames
 local ActiveNameplates = {} -- [plate] = f, only stores currently visible nameplates
 local GUIDs = {} -- [guid] = plate
+
+local function isObjSafe(obj)
+	local inInstance, instanceType = IsInInstance()
+	if inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
+	if not CanAccessObject(obj) then return false end --check if you can even touch the plate
+	return true
+end
+
 function addon:GetActiveNameplates()
 	return ActiveNameplates
 end
@@ -21,7 +29,7 @@ end
 
 function addon:GetPlateForUnit(unitID)
 	local plate, f = C_NamePlate.GetNamePlateForUnit(unitID)
-	if plate:IsForbidden() then return end
+	if not isObjSafe(plate) then return end
 	if plate then
 		f = Nameplates[plate]
 	end
@@ -42,7 +50,7 @@ end
 function E:NAME_PLATE_CREATED(plate)
 	--if a plate is restricted and cannot be used, lets avoid taints and errors
 	--https://www.wowinterface.com/forums/showthread.php?t=56125
-	if plate:IsForbidden() then return end
+	if not isObjSafe(plate) then return end
 	local f = CreateFrame('frame', nil, plate)
 	f:SetAllPoints()
 	Nameplates[plate] = f
@@ -52,7 +60,7 @@ end
 
 function E:NAME_PLATE_UNIT_ADDED(unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
-	if plate:IsForbidden() then return end
+	if not isObjSafe(plate) then return end
 	local f = Nameplates[plate]
 	ActiveNameplates[plate] = f
 	f._unitID = unitID
@@ -67,7 +75,7 @@ end
 
 function E:NAME_PLATE_UNIT_REMOVED(unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
-	if plate:IsForbidden() then return end
+	if not isObjSafe(plate) then return end
 	local f = Nameplates[plate]
 	ActiveNameplates[plate] = nil
 	

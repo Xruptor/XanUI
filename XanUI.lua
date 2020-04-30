@@ -765,22 +765,22 @@ function eventFrame:PLAYER_LOGIN()
 		MuteSoundFile(1593236)
 	end
 	
-	if TomTom and IsRetail then
+	--if TomTom and IsRetail then
 		--add the Shal'Aran portal destinations because it's annoying to remember them
 		--crazy is for the crazy arrow, setting cleardistance allows the waypoint to persist even when you go near it.  Otherwise it gets removed when you approach.
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 39.1/100, 76.3/100, { title = "Portal: Felsoul Hold", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 21.5/100, 29.9/100, { title = "Portal: Falanaar", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 30.8/100, 10.9/100, { title = "Portal: Moon Guard Stronghold", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.6/100, 79.1/100, { title = "Portal: Lunastre Estate", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 36.2/100, 47.1/100, { title = "Portal: Ruins of Elune'eth", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 47.6/100, 81.6/100, { title = "Portal: The Waning Crescent", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.4/100, 60.7/100, { title = "Portal: Sanctum of Order", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 42.2/100, 35.4/100, { title = "Portal: Tel'anor", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 64.0/100, 60.4/100, { title = "Portal: Twilight Vineyards", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 54.4/100, 69.5/100, { title = "Portal: Harbor (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
-		table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 52.03/100, 78.86/100, { title = "Portal: Evermoon Terrace (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 39.1/100, 76.3/100, { title = "Portal: Felsoul Hold", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 21.5/100, 29.9/100, { title = "Portal: Falanaar", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 30.8/100, 10.9/100, { title = "Portal: Moon Guard Stronghold", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.6/100, 79.1/100, { title = "Portal: Lunastre Estate", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 36.2/100, 47.1/100, { title = "Portal: Ruins of Elune'eth", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 47.6/100, 81.6/100, { title = "Portal: The Waning Crescent", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 43.4/100, 60.7/100, { title = "Portal: Sanctum of Order", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 42.2/100, 35.4/100, { title = "Portal: Tel'anor", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 64.0/100, 60.4/100, { title = "Portal: Twilight Vineyards", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 54.4/100, 69.5/100, { title = "Portal: Harbor (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
+		--table.insert(TomTomWPS, TomTom:AddWaypoint(TomTom.NameToMapId["Suramar"], 52.03/100, 78.86/100, { title = "Portal: Evermoon Terrace (Quest Required)", crazy=false, persistent=true, cleardistance=0 }) )
 		--add them all to a table to remove them in the future
-	end
+	--end
 		
 	--make sure to set Status Text to Numeric Values in Interface Options for this to work
 	--"PERCENT" and "NUMERIC"

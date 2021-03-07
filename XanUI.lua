@@ -15,6 +15,10 @@ local function Debug(...)
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
 end
 
+local function CanAccessObject(obj)
+	return issecure() or not obj:IsForbidden();
+end
+
 local function colour(statusbar, unit)
 	if UnitIsPlayer(unit) and UnitIsConnected(unit) and unit == statusbar.unit and UnitClass(unit) then
 		if not CanAccessObject(statusbar) then return end
@@ -462,16 +466,19 @@ end
 if IsRetail then
 
 	hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
-		for i = 1, GetNumQuestWatches() do
-			local questID, title, questLogIndex, numObjectives, requiredMoney, isComplete, startEvent, isAutoComplete, failureTime, timeElapsed, questType, isTask, isStory, isOnMap, hasLocalPOI = GetQuestWatchInfo(i)
-			if ( not questID ) then
+		for i = 1, C_QuestLog.GetNumQuestWatches() do
+			local questInfo = C_QuestLog.GetInfo(i)
+			--local questID = C_QuestLog.GetQuestIDForQuestWatchIndex(i)
+			--local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+			--local title = C_QuestLog.GetTitleForQuestID(questID)
+			if ( not questInfo or not questInfo.questID ) then
 				break
 			end
-			local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questID)
+			local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questInfo.questID)
 			if oldBlock then
 				local oldBlockHeight = oldBlock.height
-				local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
-				local newTitle = "["..select(2, GetQuestLogTitle(questLogIndex)).."] "..title
+				local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, questInfo.title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
+				local newTitle = "["..questInfo.level.."] "..questInfo.title
 				local newHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, newTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"])
 				oldBlock:SetHeight(oldBlockHeight + newHeight - oldHeight);
 			end
@@ -831,13 +838,13 @@ function eventFrame:PLAYER_LOGIN()
 		XanUI_CreatePetBar()
 	end
 	
-	XanUI_SetupTalkingHeadSilence()
+	--XanUI_SetupTalkingHeadSilence()
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
 function eventFrame:ADDON_LOADED(event, addonName)
-	XanUI_SetupTalkingHeadSilence(addonName)
+	--XanUI_SetupTalkingHeadSilence(addonName)
 end
 
 function eventFrame:PLAYER_TARGET_CHANGED()
@@ -857,7 +864,7 @@ end
 ---Shows talking head dialogue only once per session, don't spam it constantly
 ----------------------------------------------------------------
 
-eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+--eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
 
 local talkingHeadDB = {}
 local lastTalkingVO

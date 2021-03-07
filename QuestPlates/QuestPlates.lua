@@ -66,15 +66,14 @@ do
 		doQuestCheck()
 	end
 
-	function E:QUEST_ACCEPTED(qlIndex, questID, ...)
-		if IsQuestTask(questID) then
-			-- print('TASK_QUEST_ACCEPTED', questID, qlIndex, GetQuestLogTitle(qlIndex))
+	function E:QUEST_ACCEPTED(questID, ...)
+		if C_QuestLog.IsQuestTask(questID) then
+
 			local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
 			if questName then
 				ActiveWorldQuests[ questName ] = questID
 			end
 		else
-			-- print('QUEST_ACCEPTED', questID, qlIndex, GetQuestLogTitle(qlIndex))
 		end
 	end
 	
@@ -113,13 +112,13 @@ end
 
 local function isQuestComplete(qIndex, questID)
 	if qIndex then
-		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete = GetQuestLogTitle(qIndex)
-		if ( isComplete and isComplete > 0 ) then
+		local questInfo = C_QuestLog.GetInfo(qIndex)
+		if questInfo and C_QuestLog.IsComplete(questInfo.questID) then
 			return true
 		end
 	end
 	if questID then
-		if IsQuestComplete(questID) or C_QuestLog.IsQuestFlaggedCompleted(questID) then
+		if C_QuestLog.IsComplete(questID) or C_QuestLog.IsQuestFlaggedCompleted(questID) then
 			return true
 		end
 	end
@@ -133,6 +132,10 @@ local function tobool(obj)
 		return true
 	end
 	return obj
+end
+
+local function CanAccessObject(obj)
+	return issecure() or not obj:IsForbidden();
 end
 
 local function isObjSafe(obj)
@@ -217,7 +220,7 @@ local function GetQuestProgress(unitID)
 					
 					--it's a world quest different color than standard quest
 					if qID then
-						local _, _, worldQuestType = GetQuestTagInfo(qID)
+						local _, _, worldQuestType = C_QuestLog.GetQuestTagInfo(qID)
 						if worldQuestType then
 							isWorldQuest = true -- world quest
 							--Debug("world quest", text, qID)
@@ -575,8 +578,8 @@ local function UpdateQuestIcon(plate, unitID)
 		
 		--make sure we have a questID to work with
 		if qlIndex and not questID then
-			local xName, _, _, _, _, _, _, xQuestID = GetQuestLogTitle(qlIndex)
-			if xQuestID then questID = xQuestID end
+			local questInfo = C_QuestLog.GetInfo(qlIndex)
+			if questInfo and questInfo.questID then questID = questInfo.questID end
 		end
 		
 		--if we still don't have questID then it will show a red exclamation mark because it's default, sort of a catch all if we have qlIndex
@@ -742,25 +745,27 @@ end
 local function CacheQuestIndexes()
 	wipe(QuestLogIndex)
 	wipe(QuestObjectiveStrings)
-	for i = 1, GetNumQuestLogEntries() do
-		-- for i = 1, GetNumQuestLogEntries() do if not select(4,GetQuestLogTitle(i)) and select(11,GetQuestLogTitle(i)) then QuestLogPushQuest(i) end end
-		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
+	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+		local questInfo = C_QuestLog.GetInfo(i)
+		
 		--isBounty is the world map bounty quests.  also known as daily emissary quests
 		--lets not record those, they are hidden anyways
-		if not isHeader and not isBounty then
-			--LE_QUEST_TAG_TYPE_FACTION_ASSAULT 
-			--local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
-			--print(title, questID, worldQuestType, tagID, tagName)
-			--C_QuestLog.IsThreatQuest
-		
-			QuestLogIndex[title] = {qlIndex = i, questID = questID, isComplete = isComplete}
+		if questInfo and not questInfo.isHeader and not questInfo.isBounty then
+
+			QuestLogIndex[questInfo.title] = {qlIndex = i, questID = questInfo.questID, isComplete = C_QuestLog.IsComplete(questInfo.questID)}
 			--I highly doubt there will ever be 50 objectives for a quest, just break on no description
-			for q = 1, 50 do
-				local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(q, i)
-				if not description then break end
-				--local objectiveText, objectiveType, finished, numFulfilled, numRequired = GetQuestObjectiveInfo(questID, objectiveID, false)
-				QuestObjectiveStrings[description] = {qlIndex = i, questID = questID, isComplete = isCompleted, objID = q}
+			
+			local numObjectives = C_QuestLog.GetNumQuestObjectives(questInfo.questID)
+			local objectives = C_QuestLog.GetQuestObjectives(questInfo.questID)
+						
+			for objectiveIndex=1, numObjectives do
+				local objective = objectives[objectiveIndex]
+
+				if not objective.text then break end
+				QuestObjectiveStrings[objective.text] = {qlIndex = i, questID = questInfo.questID, isComplete = objective.finished, objID = objectiveIndex}
+
 			end
+			
 		end
 	end
 	

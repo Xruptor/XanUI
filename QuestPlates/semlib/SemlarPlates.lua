@@ -12,6 +12,10 @@ local Nameplates = {} -- [plate] = f, holds all nameplate frames
 local ActiveNameplates = {} -- [plate] = f, only stores currently visible nameplates
 local GUIDs = {} -- [guid] = plate
 
+local function CanAccessObject(obj)
+	return issecure() or not obj:IsForbidden();
+end
+
 local function isObjSafe(obj)
 	local inInstance, instanceType = IsInInstance()
 	if inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.

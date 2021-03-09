@@ -5,6 +5,8 @@
 
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
+local enableTalkingHeadSilence = false
+
 ----------------------------------------------------------------
 ---COLOR BARS BY CLASS
 ----------------------------------------------------------------
@@ -99,6 +101,7 @@ end ]]
 
 
 function xanUI_InsertStats()
+	if not IsRetail then return end
 	
 	--1 is the top category with intellect and such, 2 is the second category
 	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" });
@@ -278,9 +281,6 @@ function xanUI_UpdateFactionIcon(unit, frame)
 
 end
 
-xanUI_CreateFactionIcon(TargetFrame)
-xanUI_CreateFactionIcon(TargetFrameToT)
-
 ----------------------------------------------------------------
 ---CLASS SPEC INDICATORS
 ----------------------------------------------------------------
@@ -342,9 +342,6 @@ function xanUI_CreateClassSpecIcons(frame)
 	f:SetPoint("CENTER", 88, 35)
 	f:Hide()
 end
-
-xanUI_CreateClassSpecIcons(TargetFrame)
-
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -456,55 +453,6 @@ if TargetFrameSpellBar then
 	TargetFrameSpellBar.showTradeSkills = enableTradeskills
 end
 
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-
---SHOW Quest level information on the quest tracker
---Color it by level as well if necessary
-
-if IsRetail then
-
-	hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
-		for i = 1, C_QuestLog.GetNumQuestWatches() do
-			local questInfo = C_QuestLog.GetInfo(i)
-			--local questID = C_QuestLog.GetQuestIDForQuestWatchIndex(i)
-			--local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
-			--local title = C_QuestLog.GetTitleForQuestID(questID)
-			if ( not questInfo or not questInfo.questID ) then
-				break
-			end
-			local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questInfo.questID)
-			if oldBlock then
-				local oldBlockHeight = oldBlock.height
-				local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, questInfo.title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
-				local newTitle = "["..questInfo.level.."] "..questInfo.title
-				local newHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, newTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"])
-				oldBlock:SetHeight(oldBlockHeight + newHeight - oldHeight);
-			end
-		end
-	end)
-
-end
---another method
---[[ if IsAddOnLoaded("Blizzard_ObjectiveTracker") then
-    hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, "AddObjective", function(self, block, objectiveKey, text, lineType, useFullHeight, dashStyle, colorStyle, adjustForNoText)
-        local blockQuestID = block.id
-        if (block.HeaderText and blockQuestID) then
-            local i = 1
-            --get QuestTitle for blockQuestID
-            while GetQuestLogTitle(i) do
-                local questTitle, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, questID, isDaily = GetQuestLogTitle(i)
-                if (questTitle and blockQuestID and questID and level and blockQuestID == questID) then
-                    self:SetStringText(block.HeaderText, "[" .. level .. "] " .. questTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"], block.isHighlighted)
-                    break
-                end
-                i = i + 1
-            end
-        end
-    end)
-end ]]
-
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -567,9 +515,6 @@ local function AchGreenChkSetup()
 
 	achGreenCheckLoaded = true
 end
-
-hooksecurefunc("ToggleAchievementFrame", function() AchGreenChkSetup() end)
-
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -653,6 +598,38 @@ function SecondsToTimeAbbrev(seconds)
 end
  ]]
 
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+----------------------------------------------------------------
+--colored nameplates for WOW Classic
+
+local RAID_CLASS_COLORS, FACTION_BAR_COLORS = RAID_CLASS_COLORS, FACTION_BAR_COLORS
+
+local function ClassicNameplateUpdateColor(self)
+	local unit = self.unit
+	if not unit then return end
+	if not string.find(unit, 'nameplate') then return end
+
+	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+	if not nameplate then return end
+		
+	local r,g,b
+	if UnitIsUnit(unit.."target", "player") then
+		r,g,b = 0,1,0
+	elseif UnitIsPlayer(unit) then
+		local _, class = UnitClass(unit)
+		local color = RAID_CLASS_COLORS[class]
+		r, g, b = color.r, color.g, color.b
+	elseif CompactUnitFrame_IsTapDenied(self) then
+		r, g, b = 0.9, 0.9, 0.9
+	else
+		local color = FACTION_BAR_COLORS[UnitReaction(unit, "player")]
+		r, g, b = color.r, color.g, color.b
+	end
+	self.healthBar:SetStatusBarColor(r,g,b)
+end
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -725,6 +702,8 @@ function eventFrame:PLAYER_LOGIN()
 	TargetFrameToT:ClearAllPoints()
 	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 100, -45);
 	
+	xanUI_CreateFactionIcon(TargetFrame)
+	xanUI_CreateFactionIcon(TargetFrameToT)
 
 	--hide the stupid blizzard boss frames
 	if XanUIDB.hidebossframes then
@@ -739,6 +718,48 @@ function eventFrame:PLAYER_LOGIN()
 	
 	if IsRetail then
 	
+		--SHOW Quest level information on the quest tracker
+		--Color it by level as well if necessary
+
+			hooksecurefunc(QUEST_TRACKER_MODULE, "Update", function(self)
+				for i = 1, C_QuestLog.GetNumQuestWatches() do
+					local questInfo = C_QuestLog.GetInfo(i)
+					--local questID = C_QuestLog.GetQuestIDForQuestWatchIndex(i)
+					--local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+					--local title = C_QuestLog.GetTitleForQuestID(questID)
+					if ( not questInfo or not questInfo.questID ) then
+						break
+					end
+					local oldBlock = QUEST_TRACKER_MODULE:GetExistingBlock(questInfo.questID)
+					if oldBlock then
+						local oldBlockHeight = oldBlock.height
+						local oldHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, questInfo.title, nil, OBJECTIVE_TRACKER_COLOR["Header"])
+						local newTitle = "["..questInfo.level.."] "..questInfo.title
+						local newHeight = QUEST_TRACKER_MODULE:SetStringText(oldBlock.HeaderText, newTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"])
+						oldBlock:SetHeight(oldBlockHeight + newHeight - oldHeight);
+					end
+				end
+			end)
+
+		--another method
+		--[[ if IsAddOnLoaded("Blizzard_ObjectiveTracker") then
+			hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, "AddObjective", function(self, block, objectiveKey, text, lineType, useFullHeight, dashStyle, colorStyle, adjustForNoText)
+				local blockQuestID = block.id
+				if (block.HeaderText and blockQuestID) then
+					local i = 1
+					--get QuestTitle for blockQuestID
+					while GetQuestLogTitle(i) do
+						local questTitle, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, questID, isDaily = GetQuestLogTitle(i)
+						if (questTitle and blockQuestID and questID and level and blockQuestID == questID) then
+							self:SetStringText(block.HeaderText, "[" .. level .. "] " .. questTitle, nil, OBJECTIVE_TRACKER_COLOR["Header"], block.isHighlighted)
+							break
+						end
+						i = i + 1
+					end
+				end
+			end)
+		end ]]
+
 		--Move the FocusFrameToT Frame to the right of the Focus frame
 		FocusFrameToT:ClearAllPoints()
 		FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0);
@@ -748,6 +769,12 @@ function eventFrame:PLAYER_LOGIN()
 		
 		--edit the character panel stats
 		xanUI_InsertStats()
+		
+		--achievement checkmark
+		hooksecurefunc("ToggleAchievementFrame", function() AchGreenChkSetup() end)
+		
+		--spec icons
+		xanUI_CreateClassSpecIcons(TargetFrame)
 		
 		--mute ban-lu monk mount
 		MuteSoundFile(1593212)
@@ -770,6 +797,12 @@ function eventFrame:PLAYER_LOGIN()
 		MuteSoundFile(1593228)	
 		MuteSoundFile(1593229)
 		MuteSoundFile(1593236)
+		
+	else
+		--it's WOW classic
+		hooksecurefunc("CompactUnitFrame_UpdateHealthColor", ClassicNameplateUpdateColor)
+		hooksecurefunc("CompactUnitFrame_UpdateHealth", ClassicNameplateUpdateColor)
+
 	end
 	
 	--if TomTom and IsRetail then
@@ -838,13 +871,17 @@ function eventFrame:PLAYER_LOGIN()
 		XanUI_CreatePetBar()
 	end
 	
-	--XanUI_SetupTalkingHeadSilence()
+	if enableTalkingHeadSilence then
+		XanUI_SetupTalkingHeadSilence()
+	end
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
 end
 
 function eventFrame:ADDON_LOADED(event, addonName)
-	--XanUI_SetupTalkingHeadSilence(addonName)
+	if enableTalkingHeadSilence then
+		XanUI_SetupTalkingHeadSilence(addonName)
+	end
 end
 
 function eventFrame:PLAYER_TARGET_CHANGED()
@@ -864,7 +901,9 @@ end
 ---Shows talking head dialogue only once per session, don't spam it constantly
 ----------------------------------------------------------------
 
---eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+if enableTalkingHeadSilence then
+	eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+end
 
 local talkingHeadDB = {}
 local lastTalkingVO

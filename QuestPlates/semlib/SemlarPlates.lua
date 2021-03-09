@@ -65,7 +65,11 @@ end
 function E:NAME_PLATE_UNIT_ADDED(unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
 	if not isObjSafe(plate) then return end
+	if not plate then return end
+	
 	local f = Nameplates[plate]
+	if not f then return end
+	
 	ActiveNameplates[plate] = f
 	f._unitID = unitID
 	
@@ -80,7 +84,11 @@ end
 function E:NAME_PLATE_UNIT_REMOVED(unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
 	if not isObjSafe(plate) then return end
+	if not plate then return end
+	
 	local f = Nameplates[plate]
+	if not f then return end
+	
 	ActiveNameplates[plate] = nil
 	
 	local guid = UnitGUID(unitID)

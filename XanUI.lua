@@ -2,7 +2,7 @@
 	NOTE: This is my personal UI modifications.  It's not meant for the general public.
 	Don't say I didn't warn you!
 --]]
-
+local ADDON_NAME, addon = ...
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 local enableTalkingHeadSilence = false
@@ -635,20 +635,41 @@ end
 ----------------------------------------------------------------
 
 local eventFrame = CreateFrame("frame","xanUIEventFrame",UIParent)
-eventFrame:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 
-eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("UNIT_TARGET")
 eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED");
 
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:SetScript("OnEvent", function(self, event, ...)
+	if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
+		if event == "ADDON_LOADED" then
+			local arg1 = ...
+			if arg1 and arg1 == ADDON_NAME then
+				self:UnregisterEvent("ADDON_LOADED")
+				self:RegisterEvent("PLAYER_LOGIN")
+			end
+			return
+		end
+		if IsLoggedIn() then
+			self:EnableAddon(event, ...)
+			self:UnregisterEvent("PLAYER_LOGIN")
+		end
+		return
+	end
+	if self[event] then
+		return self[event](self, event, ...)
+	end
+end)
+
 local TomTomWPS = {}
 
-function eventFrame:PLAYER_LOGIN()
+function eventFrame:EnableAddon()
+
 	if not XanUIDB then XanUIDB = {} end
 	if not XanUIDB.hidebossframes then XanUIDB.hidebossframes = false end
-	if not XanUIDB.raidplates then XanUIDB.raidplates = false end
-
+	if not XanUIDB.showRace then XanUIDB.showRace = false end
+	
 	local ver = GetAddOnMetadata("xanUI","Version") or 0
 		
 	SLASH_XANUI1 = "/xanui"
@@ -673,13 +694,13 @@ function eventFrame:PLAYER_LOGIN()
 					end
 				end
 				return true
-			elseif c and c:lower() == "raidplates" then
-				if XanUIDB.raidplates then
-					XanUIDB.raidplates = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Raid Nameplates are now [|cFF99CC33OFF|r]")
+			elseif c and c:lower() == "showrace" then
+				if XanUIDB.showRace then
+					XanUIDB.showRace = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Race icons are now [|cFF99CC33OFF|r]")
 				else
-					XanUIDB.raidplates = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Raid Nameplates are now [|cFF99CC33ON|r]")
+					XanUIDB.showRace = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Race icons are now [|cFF99CC33ON|r]")
 				end
 				return true
 			end
@@ -687,7 +708,7 @@ function eventFrame:PLAYER_LOGIN()
 
 		DEFAULT_CHAT_FRAME:AddMessage("xanUI")
 		DEFAULT_CHAT_FRAME:AddMessage("/xanui hidebossframes - Toggles Hiding Blizzard Boss Health Frames On or Off")
-		DEFAULT_CHAT_FRAME:AddMessage("/xanui raidplates - Toggles Raid Nameplates On or Off")
+		DEFAULT_CHAT_FRAME:AddMessage("/xanui showrace - Toggles Race icons on Nameplates On or Off")
 
 	end
 	
@@ -872,16 +893,13 @@ function eventFrame:PLAYER_LOGIN()
 	end
 	
 	if enableTalkingHeadSilence then
-		XanUI_SetupTalkingHeadSilence()
+		if not IsAddOnLoaded("Blizzard_TalkingHeadUI") then
+			LoadAddOn("Blizzard_TalkingHeadUI")
+		end
+		eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
 	end
 	
 	eventFrame:UnregisterEvent("PLAYER_LOGIN")
-end
-
-function eventFrame:ADDON_LOADED(event, addonName)
-	if enableTalkingHeadSilence then
-		XanUI_SetupTalkingHeadSilence(addonName)
-	end
 end
 
 function eventFrame:PLAYER_TARGET_CHANGED()
@@ -901,14 +919,18 @@ end
 ---Shows talking head dialogue only once per session, don't spam it constantly
 ----------------------------------------------------------------
 
-if enableTalkingHeadSilence then
-	eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
-end
-
 local talkingHeadDB = {}
 local lastTalkingVO
 
 function eventFrame:TALKINGHEAD_REQUESTED()
+
+	if _G.TalkingHeadFrame or IsAddOnLoaded("Blizzard_TalkingHeadUI") then
+		if not eventFrame.talkingUnRegistered then
+			_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
+			eventFrame.talkingUnRegistered = true
+		end
+	end
+	
 	local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
 	
 	-- if (talkingHeadDB[vo]) then
@@ -934,20 +956,6 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 	else
 		_G.TalkingHeadFrame_PlayCurrent()
 	end
-end
-
-function XanUI_SetupTalkingHeadSilence(addonName)
-	LoadAddOn("Blizzard_TalkingHeadUI") 
-	
-	if addonName and addonName == "Blizzard_TalkingHeadUI" then
-		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
-		return
-	end
-	
-	if _G.TalkingHeadFrame or IsAddOnLoaded("Blizzard_TalkingHeadUI") then
-		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
-	end
-
 end
 
 ----------------------------------------------------------------

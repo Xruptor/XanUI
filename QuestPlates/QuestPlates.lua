@@ -55,6 +55,78 @@ local function doQuestCheck()
 	end
 end
 
+local Races={}; do--	Races/Genders
+	local TexturePath,TextureWidth,TextureHeight,IconSize,RaceGrid;
+	if IsRetail then
+		local path,width,height,size="Interface\\Glues\\CharacterCreate\\CharacterCreateIcons",2048,1024,66;
+
+--		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
+		for race,data in pairs({
+--			Race			Male, Female
+			Human			={{1762,0},{1696,0}};
+			Orc			={{1040,790},{1040,724}};
+			Dwarf			={{910,910},{780,910}};
+			NightElf		={{1040,658},{1040,592}};
+			Scourge			={{1106,460},{1106,394}};
+			Tauren			={{1106,196},{1106,130}};
+			Gnome			={{1366,0},{1300,0}};
+			Troll			={{1106,328},{1106,262}};
+			Goblin			={{1498,0},{1432,0}};
+			BloodElf		={{130,910},{0,910}};
+			Draenei			={{650,910},{520,910}};
+			Worgen			={{1106,856},{1106,790}};
+			Pandaren		={{1040,922},{1040,856}};
+			Nightborne		={{1040,526},{1040,460}};
+			HighmountainTauren	={{1630,0},{1564,0}};
+			VoidElf			={{1106,592},{1106,526}};
+			LightforgedDraenei	={{1040,130},{1960,0}};
+			ZandalariTroll		={{1172,130},{1106,922}};
+			KulTiran		={{1894,0},{1828,0}};
+			DarkIronDwarf		={{390,910},{260,910}};
+			Vulpera			={{1106,724},{1106,658}};
+			MagharOrc		={{1040,262},{1040,196}};
+			Mechagnome		={{1040,394},{1040,328}};
+		}) do for index,pos in ipairs(data) do
+--			Gender from GetPlayerInfoByGUID() is 2/3
+			Races[race..(index+1)]={
+				path=path,
+				width=width,
+				height=height,
+				coord_x1=pos[1],
+				coord_x2=pos[1]+size,
+				coord_y1=pos[2],
+				coord_y2=pos[2]+size
+			}
+		end end
+	else
+		local path,width,height,size="Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Races",256,256,64;
+
+--		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
+		for race,data in pairs({
+--			Race			Male, Female
+			Human			={{0,0},{0,2}};
+			Orc			={{3,1},{3,3}};
+			Dwarf			={{1,0},{1,2}};
+			NightElf		={{3,0},{3,2}};
+			Scourge			={{1,1},{1,3}};
+			Tauren			={{0,1},{0,3}};
+			Gnome			={{2,0},{2,2}};
+			Troll			={{2,1},{2,3}};
+		}) do for index,pos in ipairs(data) do
+--			Gender from GetPlayerInfoByGUID() is 2/3
+			Races[race..(index+1)]={
+				path=path,
+				width=width,
+				height=height,
+				coord_x1=pos[1]*size,
+				coord_x2=(pos[1]+1)*size,
+				coord_y1=pos[2]*size,
+				coord_y2=(pos[2]+1)*size
+			}
+		end end
+	end
+end
+
 do
 	function E:PLAYER_LOGIN()
 		doQuestCheck()
@@ -381,6 +453,36 @@ local function GetQuestProgress(unitID)
 end
 
 local QuestPlates = {} -- [plate] = f
+
+local function doRaceIcon(plate)
+	--check if we show race
+	if XanUIDB then
+
+		local Q = QuestPlates[plate]
+		local unitID = unitID or addon:GetUnitForPlate(plate)
+		if not Q then return end
+	
+		if XanUIDB.showRace then
+
+			local raceName, raceFile, raceID = UnitRace(unitID) 
+			local gender = UnitSex(unitID)
+			
+			if raceFile and gender then
+			
+				local race = Races[raceFile..gender]
+				
+				if race then
+					Q.iconFrame.iconRace:SetTexCoord(race.coord_x1/race.width, race.coord_x2/race.width, race.coord_y1/race.height, race.coord_y2/race.height)
+					Q.iconFrame:Show()
+				end
+			end
+		else
+			Q.iconFrame:Hide()
+		end
+		
+	end
+end
+
 function E:OnNewPlate(f, plate)
 	
 	--if a plate is restricted and cannot be used, lets avoid taints and errors
@@ -404,6 +506,17 @@ function E:OnNewPlate(f, plate)
 	iconAlert:SetSize(16, 32)
 	iconAlert:SetPoint("BOTTOM", f, "TOP")
 	frame.iconAlert = iconAlert
+	
+	local iconFrame = CreateFrame('frame', nil, f)
+	iconFrame:Hide()
+	iconFrame:SetAllPoints(f)
+	frame.iconFrame = iconFrame
+	
+	local iconRace = iconFrame:CreateTexture(nil, "OVERLAY")
+	iconRace:SetTexture("Interface\\Glues\\CharacterCreate\\CharacterCreateIcons")
+	iconRace:SetSize(40, 40)
+	iconRace:SetPoint("BOTTOM", f, "TOP")
+	frame.iconFrame.iconRace = iconRace
 	
 	local itemTexture = frame:CreateTexture(nil, nil, nil, 1)
 	itemTexture:SetPoint('TOPRIGHT', icon, 'BOTTOMLEFT', 12, 12)
@@ -466,6 +579,15 @@ function E:OnNewPlate(f, plate)
 	
 	frame:HookScript('OnShow', function(self)
 		group:Play()
+	end)
+	
+	f:HookScript("OnUpdate", function()
+		if XanUIDB and iconFrame:IsVisible() and not XanUIDB.showRace then
+			iconFrame:Hide()
+		elseif XanUIDB and not iconFrame:IsVisible() and XanUIDB.showRace then
+			doRaceIcon(plate)
+			iconFrame:Show()
+		end
 	end)
 	
 	--healthbar checker, sometimes the health bar doesn't update properly and the health values are incorrect
@@ -740,6 +862,7 @@ function E:OnPlateShow(f, plate, unitID)
 	if not isObjSafe(plate) then return end
 	
 	UpdateQuestIcon(plate, unitID)
+	doRaceIcon(plate)
 end
 
 local function CacheQuestIndexes()

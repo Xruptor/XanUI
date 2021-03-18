@@ -9,7 +9,21 @@ libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 libs\AceTimer-3.0\AceTimer-3.0.xml
 
-QuestPlates\semlib\semlib.xml
-QuestPlates\QuestPlates.lua
+modules\questplates\semlib\semlib.xml
+modules\questplates\questplates.lua
 
 xanUI.lua
+
+modules\colorhealthbyclass.lua
+modules\addmissingstats.lua
+modules\movablepetbar.lua
+modules\tooltipicons.lua
+modules\selljunk.lua
+modules\healthpercentdisplay.lua
+modules\classic_colorednameplates.lua
+modules\rightclickselfcast.lua
+modules\filtertalkingheads.lua
+modules\specindicators.lua
+modules\achievementgreencheckmark.lua
+modules\showmailboxgold.lua
+modules\factionicons.lua

@@ -1,7 +1,7 @@
 ## Interface: 90005
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  3.6
+## Version:  3.7
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB, QuestPlateSettings
 

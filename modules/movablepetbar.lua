@@ -114,7 +114,7 @@ local function EnablePetBar()
 	--only create the pet bar for Warlock, Mage and Hunter
 	local _, class = UnitClass("player")
 	
-	if class == "HUNTER" or class == "WARLOCK" or class == "MAGE" then
+	if class == "HUNTER" or class == "WARLOCK" or class == "MAGE" or class == "SHAMAN" then
 		createPetBar()
 	end
 end

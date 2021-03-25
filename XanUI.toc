@@ -27,3 +27,4 @@ modules\specindicators.lua
 modules\achievementgreencheckmark.lua
 modules\showmailboxgold.lua
 modules\factionicons.lua
+modules\hidetooltipincombat.lua

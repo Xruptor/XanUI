@@ -455,32 +455,29 @@ end
 local QuestPlates = {} -- [plate] = f
 
 local function doRaceIcon(plate)
-	--check if we show race
-	if XanUIDB then
-
-		local Q = QuestPlates[plate]
-		local unitID = unitID or addon:GetUnitForPlate(plate)
-		if not Q then return end
+	local Q = QuestPlates[plate]
+	local unitID = unitID or addon:GetUnitForPlate(plate)
+	if not Q then return false end
 	
-		if XanUIDB.showRace then
-
-			local raceName, raceFile, raceID = UnitRace(unitID) 
-			local gender = UnitSex(unitID)
-			
-			if raceFile and gender then
-			
-				local race = Races[raceFile..gender]
-				
-				if race then
-					Q.iconFrame.iconRace:SetTexCoord(race.coord_x1/race.width, race.coord_x2/race.width, race.coord_y1/race.height, race.coord_y2/race.height)
-					Q.iconFrame:Show()
-				end
-			end
-		else
-			Q.iconFrame:Hide()
-		end
+	--check if we show race
+	if XanUIDB and XanUIDB.showRace then
+		local raceName, raceFile, raceID = UnitRace(unitID) 
+		local gender = UnitSex(unitID)
 		
+		if raceFile and gender and UnitIsPlayer(unitID) then
+		
+			local race = Races[raceFile..gender]
+			
+			if race then
+				Q.iconFrame.iconRace:SetTexCoord(race.coord_x1/race.width, race.coord_x2/race.width, race.coord_y1/race.height, race.coord_y2/race.height)
+				Q.iconFrame:Show()
+				return true
+			end
+		end
 	end
+	
+	Q.iconFrame:Hide()
+	return false
 end
 
 function E:OnNewPlate(f, plate)
@@ -585,8 +582,10 @@ function E:OnNewPlate(f, plate)
 		if XanUIDB and iconFrame:IsVisible() and not XanUIDB.showRace then
 			iconFrame:Hide()
 		elseif XanUIDB and not iconFrame:IsVisible() and XanUIDB.showRace then
-			doRaceIcon(plate)
-			iconFrame:Show()
+			local chk = doRaceIcon(plate)
+			if chk then
+				iconFrame:Show()
+			end
 		end
 	end)
 	

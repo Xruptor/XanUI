@@ -99,13 +99,29 @@ local function checkPlayerQuest()
 	return false
 end
 
-local function CheckInCombatLockdown()
-	return InCombatLockdown() or UnitAffectingCombat("player")
+local function IsInBG()
+	if (GetNumBattlefieldScores() > 0) then
+		return true
+	end
+	return false
+end
+
+local function IsInArena()
+	if not IsRetail then return false end
+	local a,b = IsActiveBattlefieldArena()
+	if not a then
+		return false
+	end
+	return true
+end
+
+local function CheckCombatStatus()
+	return IsInBG() or IsInArena() or InCombatLockdown() or UnitAffectingCombat("player") or (IsRetail and C_PetBattles.IsInBattle())
 end
 
 local function CheckTooltipStatus(tooltip, unit)
 	if not tooltip then return end
-	if not InCombatLockdown() then return end
+	if not CheckCombatStatus() then return end
 
 	--there are lots of taints involved with GameTooltip and NameplateTooltip since 7.2
 	--https://us.battle.net/forums/en/wow/topic/20759156905

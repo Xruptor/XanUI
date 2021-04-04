@@ -129,13 +129,13 @@ end
 
 do
 	function E:PLAYER_LOGIN()
-		doQuestCheck()
+		E:CacheQuestIndexes()
 		DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20QuestPlates Loaded|r]")
 	end
 	
 	--this is if the world frame was refreshed or the user did a /reload etc..
 	function addon:UI_SCALE_CHANGED()
-		doQuestCheck()
+		E:CacheQuestIndexes()
 	end
 
 	function E:QUEST_ACCEPTED(questID, ...)
@@ -164,6 +164,7 @@ local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
 QuestLogIndex = {}
 QuestObjectiveStrings = {}
+QuestObjectiveCount = 0
 
 local function checkPartyShow(progressText, objectiveCount)
 
@@ -260,7 +261,7 @@ local function GetQuestProgress(unitID)
 			if not stillShow then
 				stillShow, objectiveCount = checkPartyShow(progressText, objectiveCount)
 			end
-
+		
 		elseif playerName and string.len(playerName) > 0 and playerName ~= OurName then -- quest is for another group member
 			if not questType then
 				questType = 2
@@ -864,9 +865,12 @@ function E:OnPlateShow(f, plate, unitID)
 	doRaceIcon(plate)
 end
 
-local function CacheQuestIndexes()
+function E:CacheQuestIndexes()
+	doQuestCheck()
+	
 	wipe(QuestLogIndex)
 	wipe(QuestObjectiveStrings)
+	QuestObjectiveCount = 0
 	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
 		local questInfo = C_QuestLog.GetInfo(i)
 		
@@ -885,7 +889,7 @@ local function CacheQuestIndexes()
 
 				if not objective.text then break end
 				QuestObjectiveStrings[objective.text] = {qlIndex = i, questID = questInfo.questID, isComplete = objective.finished, objID = objectiveIndex}
-
+				QuestObjectiveCount = QuestObjectiveCount + 1
 			end
 			
 		end
@@ -898,7 +902,7 @@ end
 
 function E:UNIT_QUEST_LOG_CHANGED(unitID)
 	if unitID == 'player' then
-		CacheQuestIndexes()
+		E:CacheQuestIndexes()
 	end
 	
 	for plate in pairs(addon:GetActiveNameplates()) do
@@ -907,7 +911,7 @@ function E:UNIT_QUEST_LOG_CHANGED(unitID)
 end
 
 function E:QUEST_LOG_UPDATE()
-	CacheQuestIndexes()
+	E:CacheQuestIndexes()
 end
 E:UnregisterEvent('QUEST_LOG_UPDATE')
 

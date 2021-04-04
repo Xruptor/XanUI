@@ -18,7 +18,8 @@ end)
 ----------------------------------------------------------------
 
 local talkingHeadDB = {}
-local lastTalkingVO
+local lastTalkingVO = 0
+local lastText = "?"
 
 function eventFrame:TALKINGHEAD_REQUESTED()
 
@@ -46,9 +47,10 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 			talkingHeadDB[vo] = true
 		else
 			--don't spam the notice
-			if not lastTalkingVO or lastTalkingVO ~= vo then
+			if lastTalkingVO ~= vo or lastText ~= text then
 				DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
 				lastTalkingVO = vo
+				lastText = text
 			end
 		end
 	else

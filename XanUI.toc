@@ -28,3 +28,4 @@ modules\achievementgreencheckmark.lua
 modules\showmailboxgold.lua
 modules\factionicons.lua
 modules\hidetooltipincombat.lua
+modules\soundalerts.lua

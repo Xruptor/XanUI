@@ -166,8 +166,12 @@ function addon:EnableAddon()
 	if TargetFrameSpellBar then
 		TargetFrameSpellBar.showTradeSkills = enableTradeskills
 	end
-
+	
 	if addon.IsRetail then
+	
+		--remove gryphons from the actionbar RETAIL
+		MainMenuBarArtFrame.LeftEndCap:Hide()
+		MainMenuBarArtFrame.RightEndCap:Hide()
 	
 		-- Always show missing transmogs in tooltips
 		C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
@@ -209,6 +213,11 @@ function addon:EnableAddon()
 		SetCVar("UnitNameHostleNPC", "1")
 		SetCVar("UnitNameInteractiveNPC", "1")
 		SetCVar("ShowQuestUnitCircles", "1")
+		
+	else
+		--remove gryphons from the actionbar CLASSIC
+		MainMenuBarLeftEndCap:Hide()
+		MainMenuBarRightEndCap:Hide()
 	end
 	
 	--make sure to set Status Text to Numeric Values in Interface Options for this to work

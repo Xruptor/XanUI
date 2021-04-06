@@ -1,7 +1,7 @@
 ## Interface: 90005
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  3.7
+## Version:  3.8
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB, QuestPlateSettings
 
@@ -29,3 +29,5 @@ modules\showmailboxgold.lua
 modules\factionicons.lua
 modules\hidetooltipincombat.lua
 modules\soundalerts.lua
+modules\errorframefilter.lua
+modules\enhancedtooltips.lua

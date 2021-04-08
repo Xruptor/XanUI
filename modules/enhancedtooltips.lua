@@ -31,7 +31,7 @@ cfg.deadColor = {0.5,0.5,0.5}
 cfg.targetColor = {1,0.5,0.5}
 cfg.guildColor = {1,0,1}
 cfg.afkColor = {0,1,1}
-cfg.scale = 0.95
+cfg.scale = 1
 cfg.fontFamily = STANDARD_TEXT_FONT
 cfg.backdrop = {
   bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -81,13 +81,15 @@ local function OnTooltipSetUnit(self)
   local unitName, unit = self:GetUnit()
   if not unit then return end
   --color tooltip textleft2..8
-  GameTooltipTextLeft2:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft3:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft4:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft5:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft6:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft7:SetTextColor(unpack(cfg.textColor))
-  GameTooltipTextLeft8:SetTextColor(unpack(cfg.textColor))
+  if GameTooltipTextLeft2 then GameTooltipTextLeft2:SetTextColor(unpack(cfg.textColor)) end
+  
+  if GameTooltipTextLeft3 then GameTooltipTextLeft3:SetTextColor(unpack(cfg.textColor)) end
+  if GameTooltipTextLeft4 then GameTooltipTextLeft4:SetTextColor(unpack(cfg.textColor)) end
+  if GameTooltipTextLeft5 then GameTooltipTextLeft5:SetTextColor(unpack(cfg.textColor)) end
+  if GameTooltipTextLeft6 then GameTooltipTextLeft6:SetTextColor(unpack(cfg.textColor)) end
+  if GameTooltipTextLeft7 then GameTooltipTextLeft7:SetTextColor(unpack(cfg.textColor)) end
+  if GameTooltipTextLeft8 then GameTooltipTextLeft8:SetTextColor(unpack(cfg.textColor)) end
+  
   --position raidicon
   --local raidIconIndex = GetRaidTargetIndex(unit)
   --if raidIconIndex then
@@ -110,7 +112,7 @@ local function OnTooltipSetUnit(self)
     local levelLine
     if string.find(GameTooltipTextLeft2:GetText() or "empty", "%a%s%d") then
       levelLine = GameTooltipTextLeft2
-    elseif string.find(GameTooltipTextLeft3:GetText() or "empty", "%a%s%d") then
+    elseif GameTooltipTextLeft3 and string.find(GameTooltipTextLeft3:GetText() or "empty", "%a%s%d") then
       GameTooltipTextLeft2:SetTextColor(unpack(cfg.guildColor)) --seems like the npc has a description, use the guild color for this
       levelLine = GameTooltipTextLeft3
     end
@@ -246,8 +248,8 @@ GameTooltipStatusBar.bg:SetVertexColor(0,0,0,0.5)
 hooksecurefunc(GameTooltipStatusBar,"SetStatusBarColor", SetStatusBarColor)
 --GameTooltip_SetDefaultAnchor()
 if cfg.pos then hooksecurefunc("GameTooltip_SetDefaultAnchor", SetDefaultAnchor) end
---GameTooltip_SetBackdropStyle
---hooksecurefunc("GameTooltip_SetBackdropStyle", SetBackdropStyle)
+--SharedTooltip_SetBackdropStyle
+hooksecurefunc("SharedTooltip_SetBackdropStyle", SetBackdropStyle)
 --OnTooltipSetUnit
 GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
 
@@ -257,8 +259,11 @@ WorldMapCompareTooltip1,WorldMapCompareTooltip2,SmallTextTooltip }
 for i, tooltip in next, tooltips do
   tooltip:SetScale(cfg.scale)
   if tooltip:HasScript("OnTooltipCleared") then
-    --tooltip:HookScript("OnTooltipCleared", SetBackdropStyle)
+    tooltip:HookScript("OnTooltipCleared", SetBackdropStyle)
   end
+   -- if tooltip:HasScript("OnTooltipShow") then
+    -- tooltip:HookScript("OnTooltipShow", SetBackdropStyle)
+  -- end
 end
 
 --loop over menues

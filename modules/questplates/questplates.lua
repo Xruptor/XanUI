@@ -27,6 +27,8 @@ local _, addon = ...
 local E = addon:Eve()
 SetCVar('showQuestTrackingTooltips', '1') -- Required for this addon to function, don't turn this off
 
+local GroupMembers = {}
+
 local TextureAtlases = {
 	['item'] = 'Banker', -- bag icon, you have to loot something for this quest
 	--['monster'] = '', -- you must kill or interact with units for this quest
@@ -127,61 +129,11 @@ local Races={}; do--	Races/Genders
 	end
 end
 
-do
-	function E:PLAYER_LOGIN()
-		E:CacheQuestIndexes()
-		DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20QuestPlates Loaded|r]")
-	end
-	
-	--this is if the world frame was refreshed or the user did a /reload etc..
-	function addon:UI_SCALE_CHANGED()
-		E:CacheQuestIndexes()
-	end
-
-	function E:QUEST_ACCEPTED(questID, ...)
-		if C_QuestLog.IsQuestTask(questID) then
-
-			local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-			if questName then
-				ActiveWorldQuests[ questName ] = questID
-			end
-		else
-		end
-	end
-	
-	function E:QUEST_REMOVED(questID)
-		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-		if questName and ActiveWorldQuests[ questName ] then
-			ActiveWorldQuests[ questName ] = nil
-			-- print('TASK_QUEST_REMOVED', questID, questName)
-			-- get task progress when it's updated to display on the nameplate
-			-- C_TaskQuest.GetQuestProgressBarInfo
-		end
-	end
-end
-
 local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
 QuestLogIndex = {}
 QuestObjectiveStrings = {}
 QuestObjectiveCount = 0
-
-local function checkPartyShow(progressText, objectiveCount)
-
-	if progressText then
-		local x, y = strmatch(progressText, '(%d+)/(%d+)')
-		if x and y then
-			local numLeft = y - x
-			if numLeft > objectiveCount then -- track highest number of objectives
-				objectiveCount = numLeft
-			end
-		end
-		if not x or (x and y and x ~= y) then
-			return true, objectiveCount
-		end
-	end
-	return false, objectiveCount
-end
 
 local function isQuestComplete(qIndex, questID)
 	if qIndex then
@@ -218,6 +170,48 @@ local function isObjSafe(obj)
 	return true
 end
 
+local QUEST_OBJECTIVE_PARSER_LEFT = function(text)
+  local current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
+
+  if not objective_name then
+    objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
+  end
+
+  return objective_name, current, goal
+end
+
+local QUEST_OBJECTIVE_PARSER_RIGHT = function(text)
+  -- Quest objective: Versucht, zu kommunizieren: 0/1
+  local objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
+
+  if not objective_name then
+    -- Quest objective: 0/1 Besucht die Halle der Kuriositäten
+    current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
+  end
+
+  return objective_name, current, goal
+end
+
+local STANDARD_QUEST_OBJECTIVE_PARSER = {
+  -- x/y Objective
+  enUS = QUEST_OBJECTIVE_PARSER_LEFT,
+  -- enGB = enGB clients return enUS
+  esMX = QUEST_OBJECTIVE_PARSER_LEFT,
+  ptBR = QUEST_OBJECTIVE_PARSER_LEFT,
+  itIT = QUEST_OBJECTIVE_PARSER_LEFT,
+  koKR = QUEST_OBJECTIVE_PARSER_LEFT,
+  zhTW = QUEST_OBJECTIVE_PARSER_LEFT,
+  zhCN = QUEST_OBJECTIVE_PARSER_LEFT,
+
+  -- Objective: x/y
+  deDE = QUEST_OBJECTIVE_PARSER_RIGHT,
+  frFR = QUEST_OBJECTIVE_PARSER_RIGHT,
+  esES = QUEST_OBJECTIVE_PARSER_RIGHT,
+  ruRU = QUEST_OBJECTIVE_PARSER_RIGHT,
+}
+
+local QuestObjectiveParser = STANDARD_QUEST_OBJECTIVE_PARSER[GetLocale()] or QUEST_OBJECTIVE_PARSER_LEFT
+
 local function GetQuestProgress(unitID)
 	--if not QuestPlatesEnabled or not name then return end
 	--local guid = GUIDs[name]
@@ -234,111 +228,92 @@ local function GetQuestProgress(unitID)
 	local isWorldQuest = false
 	local objectiveCount = 0
 	local questTexture -- if usable item
-	local stillShow = false
 	local questIDList = {}
 	local qlIndex
 	local questID
 	local lastIndex
 	local lastQuestID
 	local questText
+	local questTitle
 	
---old is for i=3
-	for i = 2, QuestPlateTooltip:NumLines() do
+	local progressChk = false
+	
+	for i = 3, QuestPlateTooltip:NumLines() do
 		local str = _G['QuestPlateTooltipTextLeft' .. i]
 		local text = str and str:GetText()
 		if not text then return end
 		
-		--(Name-Realm - 5/30 Quilboar Tusks) or (Name - 5/30 Quilboar Tusks)
-		local playerName, progressText = strmatch(text, '\s?([^ ]-) ?%- (.+)$') -- nil or '' if 1 is missing but 2 is there
-		local splitName, splitRealm = string.match(playerName or OurName, '^(.-) *%- *(.+)$') -- (Name-Realm)
+		local text_r, text_g, text_b = str:GetTextColor()
 
-		-- todo: if multiple entries are present, ONLY read the quest objectives for the player
-		-- if a name is listed in the pattern then we must be in a group
-		if splitName and string.len(splitName) > 0 and splitName ~= OurName then
-			if not questType then
-				questType = 2
-			end
-			if not stillShow then
-				stillShow, objectiveCount = checkPartyShow(progressText, objectiveCount)
-			end
-		
-		elseif playerName and string.len(playerName) > 0 and playerName ~= OurName then -- quest is for another group member
-			if not questType then
-				questType = 2
-			end
-			if not stillShow then
-				stillShow, objectiveCount = checkPartyShow(progressText, objectiveCount)
-			end
-
-		else
-		--Debug("t1", "inside", playerName, progressText, splitName, splitRealm)
-			--it only enters here if we are a player.  if we are then it forces questType to 1 because of progressGlob down at the return
-			if progressText then
-				local x, y = strmatch(progressText, '(%d+)/(%d+)')
-				if x and y then
-					local numLeft = y - x
-					if numLeft > objectiveCount then -- track highest number of objectives
-						objectiveCount = numLeft
-					end
-				end
-
-				--local x, y = strmatch(progressText, '(%d+)/(%d+)$')
-				if not x or (x and y and x ~= y) then
-					progressGlob = progressGlob and progressGlob .. '\n' .. progressText or progressText
-					globCount = globCount + 1
-				end
+		if text_r and text_r > 0.99 and text_g > 0.82 and text_b == 0 then
+			-- A line with this color is either the quest title or a player name (if on a group quest, but always after the quest title)
+			
+			if text == OurName then
+				progressChk = true
+			elseif not GroupMembers[text] then
+				progressChk = true
+				questTitle = text
 			else
-				if ActiveWorldQuests[ text ] then
-					local qID = ActiveWorldQuests[ text ]
-					
-					--it's a world quest different color than standard quest
-					if qID then
-						local _, _, worldQuestType = C_QuestLog.GetQuestTagInfo(qID)
-						if worldQuestType then
-							isWorldQuest = true -- world quest
-							--Debug("world quest", text, qID)
-						end
-					end
-					
-					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
-					if progress then
-						--it's a world quest
-						if isWorldQuest then
-							questType = 3 -- progress bar, do world quest color
-							return text, questType, ceil(100 - progress), nil, qID
-						else
-							--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
-							questType = 4 -- progress bar (special case)
-							return text, questType, ceil(100 - progress), nil, qID
-						end
-					end
+				progressChk = false
+				--it's probably a group quest because the title was a player name, so lets check
+				if GroupMembers[text] and not questType then questType = 2 end
+			end
 
-				else
+		elseif progressChk then
+		
+			local objective_name, current, goal = QuestObjectiveParser(text)
+			
+			--check if the last quest title was a world quest, if so set it
+			if questTitle and ActiveWorldQuests[ questTitle ] then
+				local qID = ActiveWorldQuests[ questTitle ]
 
-					local progressSwitch = false
-					
-					local x, y = strmatch(text, '(%d+)/(%d+)')
-					if x and y and tonumber(x) and tonumber(y) then
-						local numLeft = y - x
-						if numLeft > objectiveCount then -- track highest number of objectives
-							objectiveCount = numLeft
-						end
-						--if objectiveCount > 0 then
-							progressGlob = progressGlob and progressGlob .. '\n' .. text or text
-							globCount = globCount + 1
-							progressSwitch = true
-						--end
+				--it's a world quest different color than standard quest
+				if qID then
+					local info = C_QuestLog.GetQuestTagInfo(qID)
+					if info.worldQuestType then
+						isWorldQuest = true -- world quest
+						--Debug("world quest", text, qID)
 					end
-					--string based comparison for x and y
-					if not progressSwitch then
-						if x and y and x ~= y then
-							progressGlob = progressGlob and progressGlob .. '\n' .. text or text
-							globCount = globCount + 1
-						end
+				end
+
+				local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
+				if progress then
+					--it's a world quest
+					if isWorldQuest then
+						questType = 3 -- progress bar, do world quest color
+						return questTitle, questType, ceil(100 - progress), nil, qID
+					else
+						--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
+						questType = 4 -- progress bar (special case)
+						return questTitle, questType, ceil(100 - progress), nil, qID
 					end
 				end
 				
 			end
+			
+			local progressSwitch = false
+			
+			if current and goal and tonumber(current) and tonumber(goal) then
+				local numLeft = goal - current
+				if numLeft > objectiveCount then -- track highest number of objectives
+					objectiveCount = numLeft
+				end
+				--if objectiveCount > 0 then
+					progressGlob = progressGlob and progressGlob .. '\n' .. text or text
+					globCount = globCount + 1
+					progressSwitch = true
+				--end
+			end
+			
+			--string based comparison for current and goal
+			--this is for quests that don't have a counting goal like 3/10 but something like - Talk to NPC 0/1 or Used Item - Not Used/Used
+			if not progressSwitch then
+				if current and goal and current ~= goal then
+					progressGlob = progressGlob and progressGlob .. '\n' .. text or text
+					globCount = globCount + 1
+				end
+			end
+			
 		end
 		
 		local qIndexChk
@@ -450,7 +425,7 @@ local function GetQuestProgress(unitID)
 	--------------------------------------
 	
 	--Debug(UnitName(unitID), questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
-	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, markCompleted, globCount
+	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -647,7 +622,7 @@ local function UpdateQuestIcon(plate, unitID)
 		return
 	end
 	
-	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete, globCount = GetQuestProgress(unitID)
+	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, isComplete, globCount = GetQuestProgress(unitID)
 
 	if isComplete then
 		Q:Hide()
@@ -829,7 +804,7 @@ local function UpdateQuestIcon(plate, unitID)
 			Q.ani:Play()
 		end
 
-	elseif questType == 2 and stillShow then
+	elseif questType == 2 then
 			
 		Q.jellybean:SetDesaturated(true)
 		Q.iconText:SetTextColor(71/255, 183/255, 23/255, 0.9)
@@ -900,6 +875,59 @@ function E:CacheQuestIndexes()
 	end
 end
 
+function E:PLAYER_LOGIN()
+	E:CacheQuestIndexes()
+	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20QuestPlates Loaded|r]")
+end
+
+function E:GROUP_ROSTER_UPDATE()
+  local group_size = (IsInRaid() and GetNumGroupMembers()) or (IsInGroup() and GetNumSubgroupMembers()) or 0
+
+--  local is_in_raid = IsInRaid()
+--  local is_in_group = is_in_raid or IsInGroup()
+
+  wipe(GroupMembers)
+
+  if group_size > 0 then
+    local group_type = (IsInRaid() and "raid") or IsInGroup() and "party" or "solo"
+
+    for i = 1, group_size do
+      --local unit_name = UnitName(group_type .. i)
+      if UnitExists(group_type .. i) then
+        --print("Adding member:", UnitName(group_type .. i))
+        GroupMembers[UnitName(group_type .. i)] = true
+      end
+    end
+  end
+  
+end
+
+--this is if the world frame was refreshed or the user did a /reload etc..
+function addon:UI_SCALE_CHANGED()
+	E:CacheQuestIndexes()
+end
+
+function E:QUEST_ACCEPTED(questID, ...)
+	if C_QuestLog.IsQuestTask(questID) then
+
+		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
+		if questName then
+			ActiveWorldQuests[ questName ] = questID
+		end
+	else
+	end
+end
+
+function E:QUEST_REMOVED(questID)
+	local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
+	if questName and ActiveWorldQuests[ questName ] then
+		ActiveWorldQuests[ questName ] = nil
+		-- print('TASK_QUEST_REMOVED', questID, questName)
+		-- get task progress when it's updated to display on the nameplate
+		-- C_TaskQuest.GetQuestProgressBarInfo
+	end
+end
+	
 function E:UNIT_QUEST_LOG_CHANGED(unitID)
 	if unitID == 'player' then
 		E:CacheQuestIndexes()

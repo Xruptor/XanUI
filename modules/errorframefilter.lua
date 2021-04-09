@@ -13,6 +13,8 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 
+--https://www.townlong-yak.com/framexml/38134/GlobalStrings.lua
+
 local blacklist = {
 	["ERR_ABILITY_COOLDOWN"] = true,           -- Ability is not ready yet. (Ability)
 	["ERR_ITEM_COOLDOWN"] = false,				-- Item is not ready yet
@@ -40,6 +42,18 @@ local blacklist = {
 	["SPELL_FAILED_NOT_MOUNTED"] = false,       -- You are mounted
 	["SPELL_FAILED_NOT_ON_TAXI"] = false,       -- You are in flight
 	
+	["ERR_OUT_OF_DARK_FORCE"] = true,       -- Not enough dark force
+	["ERR_OUT_OF_DEMONIC_FURY"] = true,       -- Not enough fury
+	["ERR_OUT_OF_FURY"] = true,       -- Not enough fury
+	["ERR_OUT_OF_HOLY_POWER"] = true,       -- Not enough holy power
+	["ERR_OUT_OF_INSANITY"] = true,       -- Not enough insanity
+	["ERR_OUT_OF_LIGHT_FORCE"] = true,       -- Not enough light force
+	["ERR_OUT_OF_MAELSTROM"] = true,       -- Not enough maelstrom
+	["ERR_OUT_OF_PAIN"] = true,       -- Not enough pain
+	--["ERR_OUT_OF_POWER_DISPLAY"] = true,       -- Not enough %s
+	["ERR_OUT_OF_SHADOW_ORBS"] = true,       -- Not enough shadow orbs
+	["ERR_OUT_OF_SOUL_SHARDS"] = true,       -- Not enough soul shards
+
 	["ERR_OUT_OF_MANA"] = true, -- Not enough mana
 	["ERR_OUT_OF_HEALTH"] = true, -- Not enough health
 	["ERR_OUT_OF_RUNES"] = true, --Not enough runes
@@ -60,6 +74,7 @@ local blacklist = {
 	["SPELL_FAILED_TARGET_FRIENDLY"] = false, --target is friendly,
 	["ERR_POTION_COOLDOWN"] = false, --You cannot drink any more yet.
 	["ERR_PET_SPELL_OUT_OF_RANGE"] = false, --Your pet is out of range.
+	["ERR_SPELL_FAILED_ANOTHER_IN_PROGRESS"] = true, --Another action is in progress.
 }
 
 --disable default error message

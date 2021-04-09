@@ -50,7 +50,10 @@ local function doQuestCheck()
 				local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
 				if questName then
 					-- print(k, questID, questName)
-					ActiveWorldQuests[ questName ] = questID
+					local info = C_QuestLog.GetQuestTagInfo(questID)
+					if info and info.worldQuestType then
+						ActiveWorldQuests[ questName ] = questID
+					end
 				end
 			end
 		end
@@ -270,9 +273,9 @@ local function GetQuestProgress(unitID)
 				--it's a world quest different color than standard quest
 				if qID then
 					local info = C_QuestLog.GetQuestTagInfo(qID)
-					if info.worldQuestType then
+					if info and info.worldQuestType then
 						isWorldQuest = true -- world quest
-						--Debug("world quest", text, qID)
+						--Debug("world quest", questTitle, text, qID)
 					end
 				end
 
@@ -288,9 +291,8 @@ local function GetQuestProgress(unitID)
 						return questTitle, questType, ceil(100 - progress), nil, qID
 					end
 				end
-				
 			end
-			
+
 			local progressSwitch = false
 			
 			if current and goal and tonumber(current) and tonumber(goal) then
@@ -320,9 +322,9 @@ local function GetQuestProgress(unitID)
 		local qQuestIDChk				
 		local isComplete
 		
-		local data = QuestLogIndex[text]
+		local data = QuestLogIndex[text] or QuestLogIndex[questTitle]
 		--if not by quest title try the objectives
-		if not data then data = QuestObjectiveStrings[text] end
+		if not data then data = QuestObjectiveStrings[text] or QuestObjectiveStrings[questTitle] end
 		
 		if data then
 			if data.qlIndex then
@@ -424,7 +426,9 @@ local function GetQuestProgress(unitID)
 	-- end
 	--------------------------------------
 	
-	--Debug(UnitName(unitID), questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	--Debug("----------")
+	--Debug("LAST", UnitName(unitID), text, questTitle, questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	--Debug("Check", "questType=", questType, "objectiveCount", objectiveCount, "questID=", questID, "isWorldQuest=", isWorldQuest)
 	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount
 end
 
@@ -640,12 +644,13 @@ local function UpdateQuestIcon(plate, unitID)
 		Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1") --reset the texture
 		Q.iconAlert:Show()
 		
-		--if it's not a power world quest but it's still a world quest
 		if questType ~= 3 and isWorldQuest then
+			--if it's not a power world quest but it's still a world quest
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
 			Q.iconAlert:SetVertexColor(9/255, 218/255, 224/255, 0.9) --blueish tint
 		elseif questType == 1 then
+			--regular quest
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(1, .82, 0)
 			Q.iconAlert:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange much nicer
@@ -912,7 +917,10 @@ function E:QUEST_ACCEPTED(questID, ...)
 
 		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
 		if questName then
-			ActiveWorldQuests[ questName ] = questID
+			local info = C_QuestLog.GetQuestTagInfo(questID)
+			if info and info.worldQuestType then
+				ActiveWorldQuests[ questName ] = questID
+			end
 		end
 	else
 	end

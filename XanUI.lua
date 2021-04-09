@@ -206,7 +206,7 @@ function addon:EnableAddon()
 		MuteSoundFile(1593236)
 		
 		--mute Chordy from shadowlands
-		MuteSoundFile(3719073)  --Lets find shinies
+		--MuteSoundFile(3719073)  --Lets find shinies
 		
 		--Hostile, Quest, and Interactive NPCs:
 		SetCVar("UnitNameFriendlySpecialNPCName", "1")

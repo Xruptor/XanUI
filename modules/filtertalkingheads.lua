@@ -22,16 +22,16 @@ local lastTalkingVO = 0
 local lastText = "?"
 
 function eventFrame:TALKINGHEAD_REQUESTED()
-
-	if _G.TalkingHeadFrame or IsAddOnLoaded("Blizzard_TalkingHeadUI") then
-		if not eventFrame.talkingUnRegistered then
-			_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
-			eventFrame.talkingUnRegistered = true
-		end
+	
+	if _G.TalkingHeadFrame and not eventFrame.talkingUnRegistered then
+		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
+		eventFrame.talkingUnRegistered = true
+		return
 	end
 	
 	local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
 	
+	--Another way to do the filtering but it's a bit odd as sometimes the audio plays briefly.
 	-- if (talkingHeadDB[vo]) then
 		-- C_Timer.After(1, TalkingHeadFrame_CloseImmediately)
 	-- else
@@ -39,7 +39,7 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 	-- end
 	
 	local inInstance, instanceType = IsInInstance()
-	
+
 	--only do the talking head filtering in instances, in outside world for quests and stuff don't filter it
 	if inInstance and vo then
 		if not talkingHeadDB[vo] then
@@ -56,14 +56,12 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 	else
 		_G.TalkingHeadFrame_PlayCurrent()
 	end
+	
 end
 
 local function EnableFilterTalkingHeads()
 	if not addon.IsRetail then return end
 	
-	if not IsAddOnLoaded("Blizzard_TalkingHeadUI") then
-		LoadAddOn("Blizzard_TalkingHeadUI")
-	end
 	eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
 end
 

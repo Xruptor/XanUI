@@ -1,7 +1,7 @@
 ## Interface: 90005
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  3.9
+## Version:  4.0
 ## Notes: Adds some custom elements to the default blizzard unitframes
 ## SavedVariables: XanUIDB, QuestPlateSettings
 
@@ -18,7 +18,7 @@ modules\colorhealthbyclass.lua
 modules\addmissingstats.lua
 modules\movablepetbar.lua
 modules\tooltipicons.lua
-modules\selljunk.lua
+modules\selljunkautorepair.lua
 modules\healthpercentdisplay.lua
 modules\classic_colorednameplates.lua
 modules\rightclickselfcast.lua

@@ -4,7 +4,7 @@ if not _G[ADDON_NAME] then
 end
 addon = _G[ADDON_NAME]
 
-local moduleName = "selljunk"
+local moduleName = "selljunkautorepair"
 local LibAceTimer = LibStub('AceTimer-3.0')
 
 local eventFrame = CreateFrame("frame", ADDON_NAME.."_"..moduleName, UIParent)

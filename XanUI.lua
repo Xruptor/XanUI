@@ -205,6 +205,21 @@ function addon:EnableAddon()
 		MuteSoundFile(1593229)
 		MuteSoundFile(1593236)
 		
+		--disable stupid interupt/fizzle global cooldown sounds when casting
+		--REALLY annoying especially when playing Arcane Mage
+		local sounds = {
+			569772, -- sound/spells/fizzle/fizzleholya.ogg
+			569773, -- sound/spells/fizzle/fizzlefirea.ogg
+			569774, -- sound/spells/fizzle/fizzlenaturea.ogg
+			569775, -- sound/spells/fizzle/fizzlefrosta.ogg
+			569776, -- sound/spells/fizzle/fizzleshadowa.ogg
+			613892, -- sound/spells/fizzle/fizzlejadea.ogg  jade fizzle
+		}
+
+		for _, fdid in pairs(sounds) do
+			MuteSoundFile(fdid)
+		end
+		
 		--mute Chordy from shadowlands
 		--MuteSoundFile(3719073)  --Lets find shinies
 		

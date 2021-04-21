@@ -16,9 +16,9 @@ local function CanAccessObject(obj)
 	return issecure() or not obj:IsForbidden();
 end
 
-local function isObjSafe(obj)
+local function isObjSafe(obj, checkInstance)
 	local inInstance, instanceType = IsInInstance()
-	if inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
+	if checkInstance and inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
 	if not CanAccessObject(obj) then return false end --check if you can even touch the plate
 	return true
 end

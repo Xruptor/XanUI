@@ -1,6 +1,6 @@
 local debugf = tekDebug and tekDebug:GetFrame("xanUI")
 local function Debug(...)
-    if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
+	if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
 end
 
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
@@ -28,46 +28,24 @@ local E = addon:Eve()
 SetCVar('showQuestTrackingTooltips', '1') -- Required for this addon to function, don't turn this off
 
 local GroupMembers = {}
+local ActiveWorldQuests = {}
+local QuestLogIndex = {}
+local QuestObjectiveStrings = {}
+local QuestObjectiveCount = 0
 
 local TextureAtlases = {
 	['item'] = 'Banker', -- bag icon, you have to loot something for this quest
 	--['monster'] = '', -- you must kill or interact with units for this quest
 }
 
--- C_TaskQuest.GetQuestsForPlayerByMapID(GetCurrentMapAreaID())
-local ActiveWorldQuests = {
-	-- [questName] = questID ?
-}
-
-local function doQuestCheck()
-	-- local areaID = GetCurrentMapAreaID()
-	local uiMapID = C_Map.GetBestMapForUnit('player')
-	if uiMapID then
-		for k, task in pairs(C_TaskQuest.GetQuestsForPlayerByMapID(uiMapID) or {}) do
-			if task.inProgress then
-				-- track active world quests
-				local questID = task.questId
-				local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-				if questName then
-					-- print(k, questID, questName)
-					local info = C_QuestLog.GetQuestTagInfo(questID)
-					if info and info.worldQuestType then
-						ActiveWorldQuests[ questName ] = questID
-					end
-				end
-			end
-		end
-	end
-end
-
 local Races={}; do--	Races/Genders
 	local TexturePath,TextureWidth,TextureHeight,IconSize,RaceGrid;
 	if IsRetail then
 		local path,width,height,size="Interface\\Glues\\CharacterCreate\\CharacterCreateIcons",2048,1024,66;
-
---		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
+		
+		--		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
 		for race,data in pairs({
---			Race			Male, Female
+			--			Race			Male, Female
 			Human			={{1762,0},{1696,0}};
 			Orc			={{1040,790},{1040,724}};
 			Dwarf			={{910,910},{780,910}};
@@ -92,7 +70,7 @@ local Races={}; do--	Races/Genders
 			MagharOrc		={{1040,262},{1040,196}};
 			Mechagnome		={{1040,394},{1040,328}};
 		}) do for index,pos in ipairs(data) do
---			Gender from GetPlayerInfoByGUID() is 2/3
+			--			Gender from GetPlayerInfoByGUID() is 2/3
 			Races[race..(index+1)]={
 				path=path,
 				width=width,
@@ -105,10 +83,10 @@ local Races={}; do--	Races/Genders
 		end end
 	else
 		local path,width,height,size="Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Races",256,256,64;
-
---		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
+		
+		--		|Tpath:size1:size2:xoffset:yoffset:dimx:dimy:coordx1:coordx2:coordy1:coordy2|t
 		for race,data in pairs({
---			Race			Male, Female
+			--			Race			Male, Female
 			Human			={{0,0},{0,2}};
 			Orc			={{3,1},{3,3}};
 			Dwarf			={{1,0},{1,2}};
@@ -118,7 +96,7 @@ local Races={}; do--	Races/Genders
 			Gnome			={{2,0},{2,2}};
 			Troll			={{2,1},{2,3}};
 		}) do for index,pos in ipairs(data) do
---			Gender from GetPlayerInfoByGUID() is 2/3
+			--			Gender from GetPlayerInfoByGUID() is 2/3
 			Races[race..(index+1)]={
 				path=path,
 				width=width,
@@ -134,9 +112,6 @@ end
 
 local OurName = UnitName('player')
 local QuestPlateTooltip = CreateFrame('GameTooltip', 'QuestPlateTooltip', nil, 'GameTooltipTemplate')
-QuestLogIndex = {}
-QuestObjectiveStrings = {}
-QuestObjectiveCount = 0
 
 local function isQuestComplete(qIndex, questID)
 	if qIndex then
@@ -166,51 +141,51 @@ local function CanAccessObject(obj)
 	return issecure() or not obj:IsForbidden();
 end
 
-local function isObjSafe(obj)
+local function isObjSafe(obj, checkInstance)
 	local inInstance, instanceType = IsInInstance()
-	if inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
+	if checkInstance and inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
 	if not CanAccessObject(obj) then return false end --check if you can even touch the plate
 	return true
 end
 
 local QUEST_OBJECTIVE_PARSER_LEFT = function(text)
-  local current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
-
-  if not objective_name then
-    objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
-  end
-
-  return objective_name, current, goal
+	local current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
+	
+	if not objective_name then
+		objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
+	end
+	
+	return objective_name, current, goal
 end
 
 local QUEST_OBJECTIVE_PARSER_RIGHT = function(text)
-  -- Quest objective: Versucht, zu kommunizieren: 0/1
-  local objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
-
-  if not objective_name then
-    -- Quest objective: 0/1 Besucht die Halle der Kuriositäten
-    current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
-  end
-
-  return objective_name, current, goal
+	-- Quest objective: Versucht, zu kommunizieren: 0/1
+	local objective_name, current, goal = string.match(text,"^(.*: )(%d+)/(%d+)$")
+	
+	if not objective_name then
+		-- Quest objective: 0/1 Besucht die Halle der Kuriositäten
+		current, goal, objective_name = string.match(text,"^(%d+)/(%d+)( .*)$")
+	end
+	
+	return objective_name, current, goal
 end
 
 local STANDARD_QUEST_OBJECTIVE_PARSER = {
-  -- x/y Objective
-  enUS = QUEST_OBJECTIVE_PARSER_LEFT,
-  -- enGB = enGB clients return enUS
-  esMX = QUEST_OBJECTIVE_PARSER_LEFT,
-  ptBR = QUEST_OBJECTIVE_PARSER_LEFT,
-  itIT = QUEST_OBJECTIVE_PARSER_LEFT,
-  koKR = QUEST_OBJECTIVE_PARSER_LEFT,
-  zhTW = QUEST_OBJECTIVE_PARSER_LEFT,
-  zhCN = QUEST_OBJECTIVE_PARSER_LEFT,
-
-  -- Objective: x/y
-  deDE = QUEST_OBJECTIVE_PARSER_RIGHT,
-  frFR = QUEST_OBJECTIVE_PARSER_RIGHT,
-  esES = QUEST_OBJECTIVE_PARSER_RIGHT,
-  ruRU = QUEST_OBJECTIVE_PARSER_RIGHT,
+	-- x/y Objective
+	enUS = QUEST_OBJECTIVE_PARSER_LEFT,
+	-- enGB = enGB clients return enUS
+	esMX = QUEST_OBJECTIVE_PARSER_LEFT,
+	ptBR = QUEST_OBJECTIVE_PARSER_LEFT,
+	itIT = QUEST_OBJECTIVE_PARSER_LEFT,
+	koKR = QUEST_OBJECTIVE_PARSER_LEFT,
+	zhTW = QUEST_OBJECTIVE_PARSER_LEFT,
+	zhCN = QUEST_OBJECTIVE_PARSER_LEFT,
+	
+	-- Objective: x/y
+	deDE = QUEST_OBJECTIVE_PARSER_RIGHT,
+	frFR = QUEST_OBJECTIVE_PARSER_RIGHT,
+	esES = QUEST_OBJECTIVE_PARSER_RIGHT,
+	ruRU = QUEST_OBJECTIVE_PARSER_RIGHT,
 }
 
 local QuestObjectiveParser = STANDARD_QUEST_OBJECTIVE_PARSER[GetLocale()] or QUEST_OBJECTIVE_PARSER_LEFT
@@ -230,7 +205,6 @@ local function GetQuestProgress(unitID)
 	local questType -- 1 for player, 2 for group
 	local isWorldQuest = false
 	local objectiveCount = 0
-	local questTexture -- if usable item
 	local questIDList = {}
 	local qlIndex
 	local questID
@@ -238,6 +212,10 @@ local function GetQuestProgress(unitID)
 	local lastQuestID
 	local questText
 	local questTitle
+	
+	local objCompleted = false
+	local qHasOptional = false
+	local qHasLoot = false
 	
 	local progressChk = false
 	
@@ -247,7 +225,7 @@ local function GetQuestProgress(unitID)
 		if not text then return end
 		
 		local text_r, text_g, text_b = str:GetTextColor()
-
+		
 		if text_r and text_r > 0.99 and text_g > 0.82 and text_b == 0 then
 			-- A line with this color is either the quest title or a player name (if on a group quest, but always after the quest title)
 			
@@ -261,38 +239,34 @@ local function GetQuestProgress(unitID)
 				--it's probably a group quest because the title was a player name, so lets check
 				if GroupMembers[text] and not questType then questType = 2 end
 			end
-
+			
 		elseif progressChk then
-		
+			
 			local objective_name, current, goal = QuestObjectiveParser(text)
 			
+			--it's dark grey text which means the objective on the tooltip is completed.
+			--it's like 0.5019 or something but just do above 0.50 and less than 0.51 to grab it
+			if text_r and text_r > 0.50 and text_r < 0.51 and text_g > 0.50 and text_g < 0.51 and text_b > 0.50 and text_b < 0.51 then
+				objCompleted = true
+			end
+			
 			--check if the last quest title was a world quest, if so set it
-			if questTitle and ActiveWorldQuests[ questTitle ] then
-				local qID = ActiveWorldQuests[ questTitle ]
-
+			if questTitle and ActiveWorldQuests[questTitle] then
+				local qID = ActiveWorldQuests[questTitle]
+				
 				--it's a world quest different color than standard quest
 				if qID then
-					local info = C_QuestLog.GetQuestTagInfo(qID)
-					if info and info.worldQuestType then
-						isWorldQuest = true -- world quest
-						--Debug("world quest", questTitle, text, qID)
-					end
-				end
+					isWorldQuest = true -- world quest
 
-				local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
-				if progress then
-					--it's a world quest
-					if isWorldQuest then
+					local progress = C_TaskQuest.GetQuestProgressBarInfo(qID)
+					if progress then
 						questType = 3 -- progress bar, do world quest color
-						return questTitle, questType, ceil(100 - progress), nil, qID
-					else
-						--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
-						questType = 4 -- progress bar (special case)
 						return questTitle, questType, ceil(100 - progress), nil, qID
 					end
 				end
 			end
-
+			
+			--this switch is only used to determine if a number based objective was done rather than a string based one
 			local progressSwitch = false
 			
 			if current and goal and tonumber(current) and tonumber(goal) then
@@ -301,9 +275,9 @@ local function GetQuestProgress(unitID)
 					objectiveCount = numLeft
 				end
 				--if objectiveCount > 0 then
-					progressGlob = progressGlob and progressGlob .. '\n' .. text or text
-					globCount = globCount + 1
-					progressSwitch = true
+				progressGlob = progressGlob and progressGlob .. '\n' .. text or text
+				globCount = globCount + 1
+				progressSwitch = true
 				--end
 			end
 			
@@ -336,8 +310,14 @@ local function GetQuestProgress(unitID)
 			if data.isComplete then
 				isComplete = tobool(data.isComplete)
 			end
+			if data.qHasLoot then
+				qHasLoot = true
+			end
+			if data.qHasOptional then
+				qHasOptional = true
+			end		
 		end
-
+		
 		--only insert the questID once if found, we don't need to add for each objective
 		if (lastQuestID ~= qQuestIDChk or lastIndex ~= qIndexChk) and qIndexChk and qQuestIDChk then
 			if isComplete == nil then
@@ -347,13 +327,13 @@ local function GetQuestProgress(unitID)
 			lastIndex = qIndexChk
 			lastQuestID = qQuestIDChk
 		end
-	
+		
 	end
 	
 	--check to see if the quest is complete, if so then we can avoid putting alerts on the nameplate
 	local markCompleted = false
 	
-	--sort table so false is last, that way the last thing that is marked is false.  If everything is true then the last thing will be marked true
+	--sort table so false is last, that way the last thing that is marked is false. If everything is true then the last thing will be marked true
 	--this is because there aren't any more false
 	if questIDList and #questIDList > 0 then
 		table.sort(questIDList, function(a, b) return a.isComplete and not b.isComplete end)
@@ -376,6 +356,7 @@ local function GetQuestProgress(unitID)
 	
 	--Debug('initial', questText, progressGlob, questType, qlIndex, questID)
 	
+	--Bonus Objectives are referred to as (TASKS) by Blizzard
 	--check for bonus objectives that aren't classified as a world quest, technically it will not pickup the progressglob above as it would fail
 	--it would fail because it's a progress one and not a collection one like 1/10
 	if questID and not markCompleted and not questType then
@@ -385,6 +366,9 @@ local function GetQuestProgress(unitID)
 			--it's not a world quest, it's probably a "Bonus Objectives" quest for the zone
 			questType = 4 -- progress bar (special case)
 			return questText, questType, ceil(100 - progress), nil, questID
+		end
+		if C_QuestLog.IsQuestTask(questID) then
+			questType = 4 -- it's a Bonus Objective
 		end
 	end
 	
@@ -397,39 +381,17 @@ local function GetQuestProgress(unitID)
 			globCount = globCount + 1
 		end
 	end
-
-	--if we get to this point and we have a progressglob and it's not completed, then it's just a regular quest.  So mark it as 1
+	
+	--if we get to this point and we have a progressglob and it's not completed, then it's just a regular quest. So mark it as 1
 	if progressGlob and string.len(progressGlob) > 1 and not questType then
 		--its a regular quest, just mark it as 1
 		questType = 1
 	end
-	
-	--FOR SCENARIOS
-	--Blizzard_ScenarioObjectiveTracker.lua
-	--------------------------------------
-	-- local stageName, stageDescription, numCriteria, _, _, _, _, numSpells, spellInfo, weightedProgress, _, widgetSetID = C_Scenario.GetStepInfo();
-	-- local inChallengeMode = (scenarioType == LE_SCENARIO_TYPE_CHALLENGE_MODE);
-	-- local inProvingGrounds = (scenarioType == LE_SCENARIO_TYPE_PROVING_GROUNDS);
-	-- local dungeonDisplay = (scenarioType == LE_SCENARIO_TYPE_USE_DUNGEON_DISPLAY);
-	-- local inWarfront = (scenarioType == LE_SCENARIO_TYPE_WARFRONT);
-	-- local scenariocompleted = currentStage > numStages;
-	
-	-- for criteriaIndex = 1, numCriteria do
-		-- local criteriaString, criteriaType, completed, quantity, totalQuantity, flags, assetID, quantityString, criteriaID, duration, elapsed, _, isWeightedProgress = C_Scenario.GetCriteriaInfo(criteriaIndex);
-		
-	-- function ScenarioTrackerProgressBar_GetProgress(self)
-		-- if (self.criteriaIndex) then
-			-- return select(4, C_Scenario.GetCriteriaInfo(self.criteriaIndex)) or 0;
-		-- else
-			-- return select(10, C_Scenario.GetStepInfo()) or 0;
-		-- end
-	-- end
-	--------------------------------------
-	
+
 	--Debug("----------")
 	--Debug("LAST", UnitName(unitID), text, questTitle, questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
 	--Debug("Check", "questType=", questType, "objectiveCount", objectiveCount, "questID=", questID, "isWorldQuest=", isWorldQuest)
-	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount
+	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount, objCompleted, qHasOptional, qHasLoot
 end
 
 local QuestPlates = {} -- [plate] = f
@@ -445,7 +407,7 @@ local function doRaceIcon(plate)
 		local gender = UnitSex(unitID)
 		
 		if raceFile and gender and UnitIsPlayer(unitID) then
-		
+			
 			local race = Races[raceFile..gender]
 			
 			if race then
@@ -572,7 +534,8 @@ function E:OnNewPlate(f, plate)
 	--healthbar checker, sometimes the health bar doesn't update properly and the health values are incorrect
 	--so check for this and update accordingly
 	local function checkHealth(self)
-		if not isObjSafe(self) then return end
+		if not isObjSafe(self, true) then return end
+		
 		local unit
 		if self._pFrame and self._pFrame._unitID then unit = self._pFrame._unitID end
 		if self:GetParent() and self:GetParent().unit then
@@ -611,7 +574,7 @@ function E:OnNewPlate(f, plate)
 end
 
 local function UpdateQuestIcon(plate, unitID)
-
+	
 	--if a plate is restricted and cannot be used, lets avoid taints and errors
 	if not isObjSafe(plate) then return end
 	
@@ -619,25 +582,34 @@ local function UpdateQuestIcon(plate, unitID)
 	local unitID = unitID or addon:GetUnitForPlate(plate)
 	if not Q then return end
 	
-	local scenarioName, currentStage, numStages, flags, _, _, _, xp, money, scenarioType, _, textureKitID = C_Scenario.GetInfo()
-	local inChallengeMode = (scenarioType == LE_SCENARIO_TYPE_CHALLENGE_MODE)
-	if inChallengeMode then
-		Q:Hide()
+	--hide it at first
+	Q:Hide()
+	
+	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, isComplete, globCount, objCompleted, qHasOptional, qHasLoot = GetQuestProgress(unitID)
+	
+	if isComplete then
 		return
 	end
 	
-	local progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, isComplete, globCount = GetQuestProgress(unitID)
-
-	if isComplete then
-		Q:Hide()
+	--FOR SCENARIOS
+	--Blizzard_ScenarioObjectiveTracker.lua
+	--------------------------------------
+	local scenarioName, currentStage, numStages, flags, _, _, _, xp, money, scenarioType, _, textureKitID = C_Scenario.GetInfo()
+	local inChallengeMode = (scenarioType == LE_SCENARIO_TYPE_CHALLENGE_MODE)
+	-- local inProvingGrounds = (scenarioType == LE_SCENARIO_TYPE_PROVING_GROUNDS);
+	-- local dungeonDisplay = (scenarioType == LE_SCENARIO_TYPE_USE_DUNGEON_DISPLAY);
+	-- local inWarfront = (scenarioType == LE_SCENARIO_TYPE_WARFRONT);
+	-- local scenariocompleted = currentStage > numStages;
+	
+	if inChallengeMode then
 		return
 	end
-
+	
 	if progressGlob and questType ~= 2 then
 		Q.questText:SetText(progressGlob or '')
-
-		local objText = objectiveCount > 0 and objectiveCount or '?'
 		
+		local objText = objectiveCount > 0 and objectiveCount or '?'
+
 		Q.iconText:SetText(objText)
 		Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --default slate gray tint
 		Q.iconAlert:SetSize(16, 32) --reset size
@@ -648,7 +620,7 @@ local function UpdateQuestIcon(plate, unitID)
 			--if it's not a power world quest but it's still a world quest
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
-			Q.iconAlert:SetVertexColor(9/255, 218/255, 224/255, 0.9) --blueish tint
+			Q.iconAlert:SetVertexColor(9/255, 218/255, 224/255, 0.9) --light blueish tint
 		elseif questType == 1 then
 			--regular quest
 			Q.jellybean:SetDesaturated(false)
@@ -658,9 +630,10 @@ local function UpdateQuestIcon(plate, unitID)
 			--its a power gain type world quest
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(0.2, 1, 1)
-			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --blue tint
+			Q.iconAlert:SetVertexColor(0.3, 0.3, 1, 0.9) --dark blue tint
 		elseif questType == 4 then
-			--its a power gain quest but isn't a world quest.  Probably a "Bonus Objective", show a lighter orange
+			--it's probably a Bonus Objective
+			--its a power gain quest but isn't a world quest. Probably a "Bonus Objective", show a lighter orange
 			Q.jellybean:SetDesaturated(false)
 			Q.iconText:SetTextColor(1, .82, 0)
 			Q.iconAlert:SetVertexColor(1, 181/255, 17/255, 0.9) --show a lighter orange almost gold color
@@ -686,89 +659,19 @@ local function UpdateQuestIcon(plate, unitID)
 		
 		--if we still don't have questID then it will show a red exclamation mark because it's default, sort of a catch all if we have qlIndex
 		if questID then
-			local finishedQuest = true
-			local stillUnfinished = false
-			local objCount = 0
 			
-			--don't use GetNumQuestLeaderBoards, it sometimes fails and returns 0, just use a huge number and break on nil
-			--I highly doubt there will ever be 50 objectives for a quest
-			for i = 1, 50 do
-				local text, objectiveType, finished = GetQuestObjectiveInfo(questID, i, false)
-				if not text then break end
-				
-				objCount = objCount + 1
-				
-				if not finished and (objectiveType == 'item' or objectiveType == 'object') then
-					Q.lootIcon:Show()
-				end
-				
-				--Debug('obj', progressGlob, UnitName(unitID))
-				--Debug('obj', progressGlob, text, objectiveType, finished, UnitName(unitID))
-
-				--check to see if the text matches our progress, that means it was only one objective
-				if progressGlob == text and not finished then
-					--check for optional, just in case
-					if string.find(text, "(Optional)")	then
-						Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
-					end
-					finishedQuest = false
-					break
-				--do plaintext search
-				elseif string.find(progressGlob, text, 1, true) and not finished then
-					finishedQuest = false
-					break
-				--check to see if ANY of our objective text is in our progressGlob
-				elseif string.find(progressGlob, text) and not finished then
-					finishedQuest = false
-					break
-				--sometimes we have optional objectives that aren't covered, lets give it a special color
-				elseif string.find(text, "(Optional)") and not finished then
-					finishedQuest = false
-					Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
-					break
-				--check for special world quest cases of progressbar quests
-				elseif not finished and questType == 3 or questType == 4 then
-					finishedQuest = false
-					--with the progressbar quest types since we can't really grab the missing objective and just return the quest title
-					--this will always fail the objective text check.  In these scenarios, lets see if we are not done in any objective.
-					--if we aren't then show it anyways
-					break
-				--check for special cases of progressbar quests
-				elseif not finished and objectiveType == 'progressbar' then
-					finishedQuest = false
-					--some type of world quest or quest with progress that has a weirdo quest objective text
-					--since it's not finished, just show it anyways
-					break
-				--check for unknown quest progress
-				elseif not finished and questType == 5 then
-					finishedQuest = false
-					break
-				
-				--last ditch effort check, store it for ultimate check, make sure that finishedQuest is still set to true and hasn't been set to false in previous checks
-				elseif not finished and finishedQuest then
-					stillUnfinished = true
-					--don't break let it run through all objectives, just in case
-				end
-
-			end
-
-			--Debug('isFinished?', finishedQuest, stillUnfinished, questType, objCount, progressGlob, UnitName(unitID))
-			
-			--this is a last desperate check, if we only have one objective and it's still listed as unfinished then show it
-			--this causes it to show finished tooltips as gray icons even if there are other objectives that aren't done
-			--but we will use a smaller tiny arrow to folks know
-			if finishedQuest and stillUnfinished and (objCount > 1 or globCount > 1) then
-				finishedQuest = false
+			if objCompleted then
 				Q.iconAlert:SetVertexColor(119/255, 136/255, 153/255, 0.9) --slate gray tint
 				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_2") --change to small other arrow, not big one
 				Q.iconAlert:SetSize(10, 16) --make it smaller
-			elseif finishedQuest and stillUnfinished then
-				--single objective quest that was marked as unfinished for some reason
-				--It could be a Scenario, grabbing objectives from that is different than quest objectives
-				--catch all just in case we have a quest that isn't finished and show it anyways
-				--just use the optional fel green color
-				finishedQuest = false
+			end
+			
+			if qHasOptional and not isWorldQuest then
 				Q.iconAlert:SetVertexColor(77/255, 216/255, 39/255, 0.9) --give it a fel green color for optional
+			end
+				
+			if qHasLoot and not objCompleted then
+				Q.lootIcon:Show()
 			end
 			
 			--lets check to see if they are in an scenario, if so then always show a particular color
@@ -777,12 +680,6 @@ local function UpdateQuestIcon(plate, unitID)
 				Q.iconAlert:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange
 				Q.iconAlert:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1") --reset the texture
 				Q.iconAlert:SetSize(16, 32) --reset size
-			end
-
-			--all objectives complete so lets just hide it
-			if finishedQuest then
-				Q:Hide()
-				return
 			end
 			
 			--only do this if we have a questIndex
@@ -808,17 +705,15 @@ local function UpdateQuestIcon(plate, unitID)
 			Q:Show()
 			Q.ani:Play()
 		end
-
+		
 	elseif questType == 2 then
-			
+		
 		Q.jellybean:SetDesaturated(true)
 		Q.iconText:SetTextColor(71/255, 183/255, 23/255, 0.9)
 		Q.iconAlert:SetVertexColor(71/255, 183/255, 23/255, 0.9) --green tint
 		Q.iconAlert:Show()
 		Q.itemTexture:Hide()
 		Q.lootIcon:Hide()
-		Q.jellybean:Hide()
-		Q.iconText:Hide()
 		
 		local objText = objectiveCount > 0 and objectiveCount or 'P'
 		
@@ -831,10 +726,8 @@ local function UpdateQuestIcon(plate, unitID)
 			Q:Show()
 			Q.ani:Play()
 		end
-
-	else
-		Q:Hide()
-	end	
+	end
+	
 end
 
 function E:OnPlateShow(f, plate, unitID)
@@ -846,31 +739,64 @@ function E:OnPlateShow(f, plate, unitID)
 end
 
 function E:CacheQuestIndexes()
-	doQuestCheck()
-	
+
 	wipe(QuestLogIndex)
 	wipe(QuestObjectiveStrings)
+	wipe(ActiveWorldQuests)
+	
 	QuestObjectiveCount = 0
 	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
 		local questInfo = C_QuestLog.GetInfo(i)
 		
-		--isBounty is the world map bounty quests.  also known as daily emissary quests
+		if questInfo and not questInfo.isHeader then
+			local info = C_QuestLog.GetQuestTagInfo(questInfo.questID)
+			if info and info.worldQuestType then
+				ActiveWorldQuests[questInfo.title] = questInfo.questID
+			end
+		end
+				
+		--isBounty is the world map bounty quests. also known as daily emissary quests
 		--lets not record those, they are hidden anyways
 		if questInfo and not questInfo.isHeader and not questInfo.isBounty then
-
-			QuestLogIndex[questInfo.title] = {qlIndex = i, questID = questInfo.questID, isComplete = C_QuestLog.IsComplete(questInfo.questID)}
-			--I highly doubt there will ever be 50 objectives for a quest, just break on no description
 			
 			local numObjectives = C_QuestLog.GetNumQuestObjectives(questInfo.questID)
 			local objectives = C_QuestLog.GetQuestObjectives(questInfo.questID)
-						
+			local qHasLoot = false
+			local qHasOptional = false
+			
 			for objectiveIndex=1, numObjectives do
 				local objective = objectives[objectiveIndex]
-
+				
 				if not objective.text then break end
-				QuestObjectiveStrings[objective.text] = {qlIndex = i, questID = questInfo.questID, isComplete = objective.finished, objID = objectiveIndex}
+				
+				if string.find(objective.text, "(Optional)") and not objective.finished then
+					qHasOptional = true
+				end
+				
+				if not objective.finished and (objective.type == 'item' or objective.type == 'object') then
+					qHasLoot = true
+				end
+				
+				QuestObjectiveStrings[objective.text] = {
+					qlIndex = i,
+					questID = questInfo.questID,
+					isComplete = objective.finished,
+					objID = objectiveIndex,
+					qHasLoot = qHasLoot,
+					qHasOptional = qHasOptional,
+				}
+				
 				QuestObjectiveCount = QuestObjectiveCount + 1
 			end
+			
+			--do the quest storing last, that way we can check quest objectives first for tags, like qHastLoot and qHasOptional
+			QuestLogIndex[questInfo.title] = {
+				qlIndex = i,
+				questID = questInfo.questID,
+				isComplete = C_QuestLog.IsComplete(questInfo.questID),
+				qHasLoot = qHasLoot,
+				qHasOptional = qHasOptional,
+			}
 			
 		end
 	end
@@ -886,25 +812,25 @@ function E:PLAYER_LOGIN()
 end
 
 function E:GROUP_ROSTER_UPDATE()
-  local group_size = (IsInRaid() and GetNumGroupMembers()) or (IsInGroup() and GetNumSubgroupMembers()) or 0
-
---  local is_in_raid = IsInRaid()
---  local is_in_group = is_in_raid or IsInGroup()
-
-  wipe(GroupMembers)
-
-  if group_size > 0 then
-    local group_type = (IsInRaid() and "raid") or IsInGroup() and "party" or "solo"
-
-    for i = 1, group_size do
-      --local unit_name = UnitName(group_type .. i)
-      if UnitExists(group_type .. i) then
-        --print("Adding member:", UnitName(group_type .. i))
-        GroupMembers[UnitName(group_type .. i)] = true
-      end
-    end
-  end
-  
+	local group_size = (IsInRaid() and GetNumGroupMembers()) or (IsInGroup() and GetNumSubgroupMembers()) or 0
+	
+	-- local is_in_raid = IsInRaid()
+	-- local is_in_group = is_in_raid or IsInGroup()
+	
+	wipe(GroupMembers)
+	
+	if group_size > 0 then
+		local group_type = (IsInRaid() and "raid") or IsInGroup() and "party" or "solo"
+		
+		for i = 1, group_size do
+			--local unit_name = UnitName(group_type .. i)
+			if UnitExists(group_type .. i) then
+				--print("Adding member:", UnitName(group_type .. i))
+				GroupMembers[UnitName(group_type .. i)] = true
+			end
+		end
+	end
+	
 end
 
 --this is if the world frame was refreshed or the user did a /reload etc..
@@ -912,30 +838,6 @@ function addon:UI_SCALE_CHANGED()
 	E:CacheQuestIndexes()
 end
 
-function E:QUEST_ACCEPTED(questID, ...)
-	if C_QuestLog.IsQuestTask(questID) then
-
-		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-		if questName then
-			local info = C_QuestLog.GetQuestTagInfo(questID)
-			if info and info.worldQuestType then
-				ActiveWorldQuests[ questName ] = questID
-			end
-		end
-	else
-	end
-end
-
-function E:QUEST_REMOVED(questID)
-	local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-	if questName and ActiveWorldQuests[ questName ] then
-		ActiveWorldQuests[ questName ] = nil
-		-- print('TASK_QUEST_REMOVED', questID, questName)
-		-- get task progress when it's updated to display on the nameplate
-		-- C_TaskQuest.GetQuestProgressBarInfo
-	end
-end
-	
 function E:UNIT_QUEST_LOG_CHANGED(unitID)
 	if unitID == 'player' then
 		E:CacheQuestIndexes()

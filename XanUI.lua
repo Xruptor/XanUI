@@ -152,15 +152,15 @@ function addon:EnableAddon()
 	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 100, -45);
 	
 	--hide the stupid blizzard boss frames
-	if XanUIDB.hidebossframes then
-		if not addon.IsRetail then return end
-		for i = 1, 4 do
-			local frame = _G["Boss"..i.."TargetFrame"]
-			frame:UnregisterAllEvents()
-			frame:Hide()
-			frame.Show = function () end
-		end
-	end
+	-- if XanUIDB.hidebossframes then
+		-- if not addon.IsRetail then return end
+		-- for i = 1, 4 do
+			-- local frame = _G["Boss"..i.."TargetFrame"]
+			-- frame:UnregisterAllEvents()
+			-- frame:Hide()
+			-- frame.Show = function () end
+		-- end
+	-- end
 	
 	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
 	if TargetFrameSpellBar then
@@ -293,4 +293,43 @@ function addon:BANKFRAME_OPENED()
 	for i = 0, numSlots do
 		OpenBag(NUM_BAG_SLOTS + 1 + i)
 	end
+end
+
+
+----------------------------------------------------------------
+---Collaspe Objective tracker in dungeons and raids
+----------------------------------------------------------------
+addon:RegisterEvent("PLAYER_REGEN_ENABLED")
+addon:RegisterEvent("PLAYER_REGEN_DISABLED")
+addon:RegisterEvent("PLAYER_ENTERING_WORLD")
+
+-- ObjectiveTrackerFrame:Hide()
+-- ObjectiveTrackerFrame.Show = ObjectiveTrackerFrame.Hide
+-- SLASH_SHOW1 = "/showit";
+-- SlashCmdList.SHOW = function(arg)
+    -- ObjectiveTrackerFrame:SetShown(not ObjectiveTrackerFrame:IsShown())
+-- end
+
+local function checkObjInstance(checkZone)
+	--/run if ObjectiveTrackerFrame:IsVisible() then ObjectiveTrackerFrame:Hide(); else ObjectiveTrackerFrame:Show(); end
+	--https://gitlab.ditlev.org/Zyano/elvui-classic/-/blob/5c7a74735b6331215b4159a535307ad3bc40e168/ElvUI/Modules/Blizzard/ObjectiveFrame.lua
+	
+	--used to hide it but sometimes it shows information, just collaspe it
+	local typeInstance = select(2, IsInInstance())
+	if typeInstance == "party" or typeInstance == "raid" then
+		ObjectiveTracker_Collapse()
+	elseif checkZone then
+		--it's not a dungeon or raid so lets expand our quest tracker only when zoning
+		ObjectiveTracker_Expand()
+	end
+end
+
+function addon:PLAYER_REGEN_ENABLED()
+	checkObjInstance()
+end
+function addon:PLAYER_REGEN_DISABLED()
+	checkObjInstance()
+end
+function addon:PLAYER_ENTERING_WORLD()
+	checkObjInstance(true)
 end

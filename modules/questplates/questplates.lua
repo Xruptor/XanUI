@@ -32,6 +32,7 @@ local ActiveWorldQuests = {}
 local QuestLogIndex = {}
 local QuestObjectiveStrings = {}
 local QuestObjectiveCount = 0
+local QuestData = {}
 
 local TextureAtlases = {
 	['item'] = 'Banker', -- bag icon, you have to loot something for this quest
@@ -213,6 +214,9 @@ local function GetQuestProgress(unitID)
 	local questText
 	local questTitle
 	
+	local objSwitch_Comp = false
+	local objSwitch_NotComp = false
+	
 	local objCompleted = false
 	local qHasOptional = false
 	local qHasLoot = false
@@ -247,7 +251,9 @@ local function GetQuestProgress(unitID)
 			--it's dark grey text which means the objective on the tooltip is completed.
 			--it's like 0.5019 or something but just do above 0.50 and less than 0.51 to grab it
 			if text_r and text_r > 0.50 and text_r < 0.51 and text_g > 0.50 and text_g < 0.51 and text_b > 0.50 and text_b < 0.51 then
-				objCompleted = true
+				objSwitch_Comp = true
+			else
+				objSwitch_NotComp = true
 			end
 			
 			--check if the last quest title was a world quest, if so set it
@@ -326,36 +332,46 @@ local function GetQuestProgress(unitID)
 			table.insert(questIDList, {name = text, qlIndex = qIndexChk, questID = qQuestIDChk, isComplete = isComplete} )
 			lastIndex = qIndexChk
 			lastQuestID = qQuestIDChk
+			
+			--set our fallback variables incase of markCompleted below is messed update
+			questText = text
+			qlIndex = qIndexChk
+			questID = qQuestIDChk
 		end
 		
 	end
 	
+	--can get quest info using questID by using QuestData[questID]
+	-- if questID then
+		-- local questData = QuestData[questID]
+	-- end
+	
+	--check our completed objectives, if any return true then keep it hidden otherwise if all are finished then show gray marker
+	if not objSwitch_NotComp and objSwitch_Comp then
+		objCompleted = true
+	end
+
 	--check to see if the quest is complete, if so then we can avoid putting alerts on the nameplate
-	local markCompleted = false
+	local markCompleted = true
 	
-	--sort table so false is last, that way the last thing that is marked is false. If everything is true then the last thing will be marked true
-	--this is because there aren't any more false
 	if questIDList and #questIDList > 0 then
-		table.sort(questIDList, function(a, b) return a.isComplete and not b.isComplete end)
-		
 		for i = 1, #questIDList do
-			questText = questIDList[i].name
-			qlIndex = questIDList[i].qlIndex
-			questID = questIDList[i].questID
-			markCompleted = questIDList[i].isComplete
-			--Debug(questIDList[i].name, qlIndex, questID, markCompleted)
+			--if any of the quests are marked as not completed, then reset the switch and exit loop
+			--NOTE:!!!! make sure to set our variables to the uncompleted quest!!! important for checks below
+			if not questIDList[i].isComplete then
+				questText = questIDList[i].name
+				qlIndex = questIDList[i].qlIndex
+				questID = questIDList[i].questID
+				markCompleted = false
+				break
+			end
 		end
-	else
-		--nothing to show
-		markCompleted = true
 	end
-	
+
 	------
 	--btw we check for questType so not to overwrite the PARTY questType of 2 or any other assigned questType already
 	------
-	
-	--Debug('initial', questText, progressGlob, questType, qlIndex, questID)
-	
+
 	--Bonus Objectives are referred to as (TASKS) by Blizzard
 	--check for bonus objectives that aren't classified as a world quest, technically it will not pickup the progressglob above as it would fail
 	--it would fail because it's a progress one and not a collection one like 1/10
@@ -389,7 +405,7 @@ local function GetQuestProgress(unitID)
 	end
 
 	--Debug("----------")
-	--Debug("LAST", UnitName(unitID), text, questTitle, questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, stillShow, isComplete)
+	--Debug("LAST", UnitName(unitID), text, questTitle, questText, progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount, objCompleted, qHasOptional, qHasLoot)
 	--Debug("Check", "questType=", questType, "objectiveCount", objectiveCount, "questID=", questID, "isWorldQuest=", isWorldQuest)
 	return progressGlob, questType, objectiveCount, qlIndex, questID, isWorldQuest, markCompleted, globCount, objCompleted, qHasOptional, qHasLoot
 end
@@ -743,6 +759,7 @@ function E:CacheQuestIndexes()
 	wipe(QuestLogIndex)
 	wipe(QuestObjectiveStrings)
 	wipe(ActiveWorldQuests)
+	wipe(QuestData)
 	
 	QuestObjectiveCount = 0
 	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
@@ -764,6 +781,8 @@ function E:CacheQuestIndexes()
 			local qHasLoot = false
 			local qHasOptional = false
 			
+			QuestData[questInfo.questID] = {}
+			
 			for objectiveIndex=1, numObjectives do
 				local objective = objectives[objectiveIndex]
 				
@@ -777,8 +796,10 @@ function E:CacheQuestIndexes()
 					qHasLoot = true
 				end
 				
-				QuestObjectiveStrings[objective.text] = {
+				local objInfo = {
 					qlIndex = i,
+					objText = objective.text,
+					objType = objective.type,
 					questID = questInfo.questID,
 					isComplete = objective.finished,
 					objID = objectiveIndex,
@@ -786,6 +807,9 @@ function E:CacheQuestIndexes()
 					qHasOptional = qHasOptional,
 				}
 				
+				QuestObjectiveStrings[objective.text] = objInfo
+				table.insert(QuestData[questInfo.questID], objInfo)
+
 				QuestObjectiveCount = QuestObjectiveCount + 1
 			end
 			

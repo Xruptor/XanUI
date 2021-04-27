@@ -247,13 +247,17 @@ local function GetQuestProgress(unitID)
 		elseif progressChk then
 			
 			local objective_name, current, goal = QuestObjectiveParser(text)
+			local objChk = QuestObjectiveStrings[text] or QuestObjectiveStrings[questTitle]
 			
 			--it's dark grey text which means the objective on the tooltip is completed.
 			--it's like 0.5019 or something but just do above 0.50 and less than 0.51 to grab it
-			if text_r and text_r > 0.50 and text_r < 0.51 and text_g > 0.50 and text_g < 0.51 and text_b > 0.50 and text_b < 0.51 then
-				objSwitch_Comp = true
-			else
-				objSwitch_NotComp = true
+			if objChk then
+				--only check objectives not other text in the tooltip
+				if text_r and text_r > 0.50 and text_r < 0.51 and text_g > 0.50 and text_g < 0.51 and text_b > 0.50 and text_b < 0.51 then
+					objSwitch_Comp = true
+				else
+					objSwitch_NotComp = true
+				end
 			end
 			
 			--check if the last quest title was a world quest, if so set it

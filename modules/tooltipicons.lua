@@ -12,17 +12,20 @@ local function showTooltipIcon(tooltip, link)
 	local linkType,id = link:match("^([^:]+):(%d+)")
 	if linkType == "achievement" and id then
 		if GetAchievementInfo(id) and select(10,GetAchievementInfo(id)) then
+			tooltip.button:Show()
 			tooltip.button:SetNormalTexture(select(10,GetAchievementInfo(id)))
 			tooltip.button.doOverlay:Show()
 			tooltip.button.type = "achievement"
 		end
 	elseif linkType == "spell" and id then
 		if GetSpellInfo(id) and select(3,GetSpellInfo(id)) then
+			tooltip.button:Show()
 			tooltip.button:SetNormalTexture(select(3,GetSpellInfo(id)))
 			tooltip.button.type = "spell"
 		end
 	else
 		if id and GetItemIcon(id) then
+			tooltip.button:Show()
 			tooltip.button:SetNormalTexture(GetItemIcon(id))
 			tooltip.button.type = "item"
 		end
@@ -32,10 +35,11 @@ end
 
 local function RegisterTooltip(tooltip)
 
-	local b = CreateFrame("Button",nil,tooltip)
+	local b = CreateFrame("Button", nil, tooltip)
 	b:SetWidth(37)
 	b:SetHeight(37)
-	b:SetPoint("TOPRIGHT",tooltip,"TOPLEFT",0,-3)
+	b:SetPoint("TOPRIGHT", tooltip, "TOPLEFT", 0, -3)
+	b:Hide()
 
 	local t = b:CreateTexture(nil,"OVERLAY")
 	t:SetTexture("Interface\\AchievementFrame\\UI-Achievement-IconFrame")
@@ -57,9 +61,10 @@ local function hookTip(tooltip)
 	RegisterTooltip(tooltip)
 	
 	tooltip:HookScript("OnHide", function(self)
+		self.button:Hide()
 		self.button:SetNormalTexture(nil)
 		self.button.doOverlay:Hide()
-		self.button.type = nil		
+		self.button.type = nil
 	end)	
 
 	tooltip:HookScript('OnTooltipSetItem', function(self)
@@ -78,3 +83,4 @@ local function hookTip(tooltip)
 end
 
 hookTip(ItemRefTooltip)
+hookTip(GameTooltip)

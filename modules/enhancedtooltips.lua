@@ -170,6 +170,75 @@ local function OnTooltipSetUnit(self)
 	end
 end
 
+-------------------------------------
+--- SPEC ICONS, from addon AllTheThings
+-------------------------------------
+
+local function FilterSpecs(specs)
+	if specs then
+		if #specs > 0 then
+			local specCount = #specs
+			for i=specCount,1,-1 do
+				local specID = specs[i]
+				local id, name, description, icon, role, class = GetSpecializationInfoByID(specID)
+				local _, playerClass = UnitClass("player")
+				if class ~= playerClass or not name or name == "" then
+					table.remove(specs, i)
+				end
+			end
+			table.sort(specs)
+		end
+	end
+end
+
+local function GetFixedItemSpecInfo(itemID)
+	if not itemID then return {}; end
+	local specs = GetItemSpecInfo(itemID)
+	if not specs then
+		specs = {}
+	end
+	if #specs < 1 then
+		local _, _, _, _, _, _, _, _, itemEquipLoc, _, _, itemClassID, itemSubClassID, _, expacID, _, _ = GetItemInfo(itemID);
+		-- only Armor items
+		if itemClassID and itemClassID == 4 then
+			-- unable to distinguish between Trinkets usable by all specs (Font of Power) and Role-Specific trinkets which do not apply to any Role of the current Character
+			if (expacID == 6 or expacID == 7) and (itemEquipLoc == "INVTYPE_NECK" or itemEquipLoc == "INVTYPE_FINGER") then
+				local numSpecializations = GetNumSpecializations()
+				if numSpecializations and numSpecializations > 0 then
+					for i=1,numSpecializations,1 do
+						local specID = select(1, GetSpecializationInfo(i))
+						table.insert(specs, specID)
+					end
+				end
+			end
+		end
+		table.sort(specs)
+	else
+		FilterSpecs(specs)
+	end
+	return specs
+end
+
+local function addSpecInfoToTooltip(tooltip, itemID)
+	if not tooltip or not itemID then return end
+	
+	local specs = GetFixedItemSpecInfo(itemID)
+	-- specs is already filtered/sorted to only current class
+	if #specs > 0 then
+		--add a space first
+		tooltip:AddLine(" ")
+		local spec_label = ""
+		for key, specID in ipairs(specs) do
+			local id, name, description, icon, role, class = GetSpecializationInfoByID(specID)
+			spec_label = spec_label .. "  |T" .. icon .. ":0|t " .. name
+		end
+		tooltip:AddLine(spec_label)
+	end
+end
+
+-------------------------------------
+-------------------------------------
+
 local function SetBackdropStyle(self,style)
 	if not CanAccessObject(self) then return end
 	
@@ -190,6 +259,8 @@ local function SetBackdropStyle(self,style)
 		else
 			self:SetBackdropBorderColor(r,g,b,cfg.backdrop.itemBorderColorAlpha)
 		end
+		
+		addSpecInfoToTooltip(self, itemLink)
 	else
 		--no item, use default border
 		self:SetBackdropBorderColor(unpack(cfg.backdrop.borderColor))

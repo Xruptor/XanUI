@@ -63,4 +63,4 @@ local function EnableInsertStats()
 end
 
 --add to our module loader
-table.insert(addon.moduleFuncs, { func=EnableInsertStats } )
+table.insert(addon.moduleFuncs, { func=EnableInsertStats, name=moduleName } )

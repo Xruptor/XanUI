@@ -80,6 +80,14 @@ function XanUI_SlashCommand(cmd)
 			end
 			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20"..tostring(XanUIDB.onlyDracthyr).."|r].")
 			return true
+		elseif c and c:lower() == "showquests" then
+			if XanUIDB.showQuests then
+				XanUIDB.showQuests = false
+			else
+				XanUIDB.showQuests = true
+			end
+			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20"..tostring(XanUIDB.showQuests).."|r].")
+			return true
 		end
 	end
 
@@ -88,6 +96,7 @@ function XanUI_SlashCommand(cmd)
 	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendericon - Toggles showing the gender icon.")
 	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendertext - Toggles showing the gender text.")
 	DEFAULT_CHAT_FRAME:AddMessage("/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only.")
+	DEFAULT_CHAT_FRAME:AddMessage("/xanui showquests - Toggles showing quest icons.")
 end
 
 function addon:EnableAddon()
@@ -98,6 +107,7 @@ function addon:EnableAddon()
 	if XanUIDB.showGenderIcon == nil then XanUIDB.showGenderIcon = false end
 	if XanUIDB.showGenderText == nil then XanUIDB.showGenderText = true end
 	if XanUIDB.onlyDracthyr == nil then XanUIDB.onlyDracthyr = true end
+	if XanUIDB.showQuests == nil then XanUIDB.showQuests = true end
 	
 	local ver = GetAddOnMetadata("xanUI","Version") or 0
 		

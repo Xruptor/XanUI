@@ -66,5 +66,5 @@ local function EnableFilterTalkingHeads()
 end
 
 --add to our module loader
-table.insert(addon.moduleFuncs, { func=EnableFilterTalkingHeads } )
+table.insert(addon.moduleFuncs, { func=EnableFilterTalkingHeads, name=moduleName } )
 

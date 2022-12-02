@@ -17,15 +17,15 @@ local OffsetY = 0 -- Vertical offset for icon
 local IconScale = 1 -- Scale for icon
 
 -- Uncomment these lines if you want to enable them, or set to 0 to turn them off
--- SetCVar('showQuestUnitCircles', 1) -- Enables subtle glow under quest mobs
--- SetCVar('UnitNameFriendlySpecialNPCName', 1) -- Show name for quest objectives, even out of range of nameplates
+-- C_CVar.SetCVar('showQuestUnitCircles', 1) -- Enables subtle glow under quest mobs
+-- C_CVar.SetCVar('UnitNameFriendlySpecialNPCName', 1) -- Show name for quest objectives, even out of range of nameplates
 
 -- END OF SETTINGS
 --------------------
 
 local _, addon = ...
 local E = addon:Eve()
-SetCVar('showQuestTrackingTooltips', '1') -- Required for this addon to function, don't turn this off
+C_CVar.SetCVar('showQuestTrackingTooltips', '1') -- Required for this addon to function, don't turn this off
 
 local GroupMembers = {}
 local ActiveWorldQuests = {}

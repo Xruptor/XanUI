@@ -12,8 +12,6 @@ addon = _G[ADDON_NAME]
 addon.IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 addon.moduleFuncs = {}
 
-local enableTradeskills = true
-
 local debugf = tekDebug and tekDebug:GetFrame(ADDON_NAME)
 local function Debug(...)
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
@@ -45,144 +43,70 @@ function addon.CanAccessObject(obj)
 	return issecure() or not obj:IsForbidden();
 end
 
-function addon.SaveLayout(frame)
-	if type(frame) ~= "string" then return end
-	if not _G[frame] then return end
-	if not XanUIDB then XanUIDB = {} end
-	
-	local opt = XanUIDB[frame] or nil
+function XanUI_SlashCommand(cmd)
 
-	if not opt then
-		XanUIDB[frame] = {
-			["point"] = "CENTER",
-			["relativePoint"] = "CENTER",
-			["xOfs"] = 0,
-			["yOfs"] = 0,
-		}
-		opt = XanUIDB[frame]
-		return
+	local a,b,c=strfind(cmd, "(%S+)"); --contiguous string of non-space characters
+	
+	if a then
+		if c and c:lower() == "showrace" then
+			if XanUIDB.showRaceIcon then
+				XanUIDB.showRaceIcon = false
+			else
+				XanUIDB.showRaceIcon = true
+			end
+			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20"..tostring(XanUIDB.showRaceIcon).."|r].")
+			return true
+		elseif c and c:lower() == "gendericon" then
+			if XanUIDB.showGenderIcon then
+				XanUIDB.showGenderIcon = false
+			else
+				XanUIDB.showGenderIcon = true
+			end
+			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderIcon).."|r].")
+			return true
+		elseif c and c:lower() == "gendertext" then
+			if XanUIDB.showGenderText then
+				XanUIDB.showGenderText = false
+			else
+				XanUIDB.showGenderText = true
+			end
+			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderText).."|r].")
+			return true
+		elseif c and c:lower() == "onlydrac" then
+			if XanUIDB.onlyDracthyr then
+				XanUIDB.onlyDracthyr = false
+			else
+				XanUIDB.onlyDracthyr = true
+			end
+			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20"..tostring(XanUIDB.onlyDracthyr).."|r].")
+			return true
+		end
 	end
 
-	local point, relativeTo, relativePoint, xOfs, yOfs = _G[frame]:GetPoint()
-	opt.point = point
-	opt.relativePoint = relativePoint
-	opt.xOfs = xOfs
-	opt.yOfs = yOfs
-end
-
-function addon.RestoreLayout(frame)
-	if type(frame) ~= "string" then return end
-	if not _G[frame] then return end
-	if not XanUIDB then XanUIDB = {} end
-
-	local opt = XanUIDB[frame] or nil
-
-	if not opt then
-		XanUIDB[frame] = {
-			["point"] = "CENTER",
-			["relativePoint"] = "CENTER",
-			["xOfs"] = 0,
-			["yOfs"] = 0,
-		}
-		opt = XanUIDB[frame]
-	end
-
-	_G[frame]:ClearAllPoints()
-	_G[frame]:SetPoint(opt.point, UIParent, opt.relativePoint, opt.xOfs, opt.yOfs)
-	
-	-- xpcall(self.SetPoint, geterrorhandler(), self, self.anchorPoint, self.relativeTo, self.relativePoint, xOffset, yOffset);
-	--https://github.com/WeakAuras/WeakAuras2/commit/f02d15dcf50b158e9ba08af0f34f586fdadf015f
-	--https://github.com/WeakAuras/WeakAuras2/pull/1425/commits/37c41ae0c9cf978d3151227e2c665eaf3b1cd00e
-	--https://github.com/emptyrivers/WeakAuras2/commit/823e682849d7383f33d12eb61af96c8f1037a2d2
-	
+	DEFAULT_CHAT_FRAME:AddMessage(ADDON_NAME, 64/255, 224/255, 208/255)
+	DEFAULT_CHAT_FRAME:AddMessage("/xanui showrace - Toggles showing the race icon.")
+	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendericon - Toggles showing the gender icon.")
+	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendertext - Toggles showing the gender text.")
+	DEFAULT_CHAT_FRAME:AddMessage("/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only.")
 end
 
 function addon:EnableAddon()
 
 	if not XanUIDB then XanUIDB = {} end
-	if not XanUIDB.hidebossframes then XanUIDB.hidebossframes = false end
-	if not XanUIDB.showRace then XanUIDB.showRace = false end
+	
+	if XanUIDB.showRaceIcon == nil then XanUIDB.showRaceIcon = false end
+	if XanUIDB.showGenderIcon == nil then XanUIDB.showGenderIcon = false end
+	if XanUIDB.showGenderText == nil then XanUIDB.showGenderText = true end
+	if XanUIDB.onlyDracthyr == nil then XanUIDB.onlyDracthyr = true end
 	
 	local ver = GetAddOnMetadata("xanUI","Version") or 0
 		
-	SLASH_XANUI1 = "/xanui"
-	SLASH_XANUI2 = "/xui"
-	SlashCmdList["XANUI"] = function(msg)
-	
-		local a,b,c=strfind(msg, "(%S+)"); --contiguous string of non-space characters
-		
-		if a then
-			if c and c:lower() == "hidebossframes" then
-				if XanUIDB.hidebossframes then
-					XanUIDB.hidebossframes = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33ON|r]")
-				else
-					XanUIDB.hidebossframes = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Blizzard Boss Health Frames are now [|cFF99CC33OFF|r]")
-					for i = 1, 4 do
-						local frame = _G["Boss"..i.."TargetFrame"]
-						frame:UnregisterAllEvents()
-						frame:Hide()
-						frame.Show = function () end
-					end
-				end
-				return true
-			elseif c and c:lower() == "showrace" then
-				if XanUIDB.showRace then
-					XanUIDB.showRace = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Race icons are now [|cFF99CC33OFF|r]")
-				else
-					XanUIDB.showRace = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Race icons are now [|cFF99CC33ON|r]")
-				end
-				return true
-			end
-		end
-
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI")
-		DEFAULT_CHAT_FRAME:AddMessage("/xanui hidebossframes - Toggles Hiding Blizzard Boss Health Frames On or Off")
-		DEFAULT_CHAT_FRAME:AddMessage("/xanui showrace - Toggles Race icons on Nameplates On or Off")
-
-	end
-
-	--move the target or target frame ToT
-	--some bosses have these special charge bars to the right of their frame
-	--so lets put the TOT below it and to the right slightly
-	TargetFrameToT:ClearAllPoints()
-	TargetFrameToT:SetPoint("RIGHT", TargetFrame, "RIGHT", 100, -45);
-	
-	--hide the stupid blizzard boss frames
-	-- if XanUIDB.hidebossframes then
-		-- if not addon.IsRetail then return end
-		-- for i = 1, 4 do
-			-- local frame = _G["Boss"..i.."TargetFrame"]
-			-- frame:UnregisterAllEvents()
-			-- frame:Hide()
-			-- frame.Show = function () end
-		-- end
-	-- end
-	
-	--ADD TradeSkills to the Blizzard Default TargetFrameSpellBar
-	if TargetFrameSpellBar then
-		TargetFrameSpellBar.showTradeSkills = enableTradeskills
-	end
 	
 	if addon.IsRetail then
 	
-		--remove gryphons from the actionbar RETAIL
-		MainMenuBarArtFrame.LeftEndCap:Hide()
-		MainMenuBarArtFrame.RightEndCap:Hide()
-	
 		-- Always show missing transmogs in tooltips
-		C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
-		
-		--Move the FocusFrameToT Frame to the right of the Focus frame
-		FocusFrameToT:ClearAllPoints()
-		FocusFrameToT:SetPoint("RIGHT", FocusFrame, "RIGHT", 95, 0)
-	
-		-- Always show missing transmogs in tooltips
-		C_TransmogCollection.SetShowMissingSourceInItemTooltips(true)
-		
+		C_CVar.SetCVar("missingTransmogSourceInItemTooltips", "1")
+
 		--mute ban-lu monk mount
 		MuteSoundFile(1593212)
 		MuteSoundFile(1593212)
@@ -224,51 +148,26 @@ function addon:EnableAddon()
 		--MuteSoundFile(3719073)  --Lets find shinies
 		
 		--Hostile, Quest, and Interactive NPCs:
-		SetCVar("UnitNameFriendlySpecialNPCName", "1")
-		SetCVar("UnitNameHostleNPC", "1")
-		SetCVar("UnitNameInteractiveNPC", "1")
-		SetCVar("ShowQuestUnitCircles", "1")
-		
-	else
-		--remove gryphons from the actionbar CLASSIC
-		MainMenuBarLeftEndCap:Hide()
-		MainMenuBarRightEndCap:Hide()
+		C_CVar.SetCVar("UnitNameFriendlySpecialNPCName", "1")
+		C_CVar.SetCVar("UnitNameHostleNPC", "1")
+		C_CVar.SetCVar("UnitNameInteractiveNPC", "1")
+		C_CVar.SetCVar("ShowQuestUnitCircles", "1")
+
 	end
 	
-	--make sure to set Status Text to Numeric Values in Interface Options for this to work
-	--"PERCENT" and "NUMERIC"
-	--GetCVarDefault("statusTextDisplay") -> "NUMERIC"
-	--GetCVarDefault("statusText") -> "0"
-
 	--force Numeric for healthbar fix
-	SetCVar("statusText","1")
-	SetCVar("statusTextDisplay","NUMERIC")
-	--InterfaceOptionsStatusTextPanelDisplayDropDown:SetValue("NUMERIC")
-	
-	--OPTIONS PANEL
-	--https://github.com/tomrus88/BlizzardInterfaceCode/blob/master/Interface/FrameXML/InterfaceOptionsPanels.lua
-	
-	--NAMEPLATES
-	--http://www.wowinterface.com/forums/showthread.php?t=55998
-	SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
-	SetCVar("nameplateShowFriends", 1) -- show for friendly units
-	--SetCVar("nameplateShowFriendlyNPCs", 0) --show the nameplates on friendly units as well
-
-	SetCVar("nameplateShowEnemies", 1) -- Enemy
-	--SetCVar("nameplateShowEnemyMinions", 0) -- Enemy Minions
-	SetCVar("nameplateShowEnemyMinus", 1) -- Enemy Minors
-	
-	SetCVar("nameplateMaxDistance", 100) --default 60
-	
-	SetCVar("UnitNameNPC", "0") --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
-	
-	--NamePanelOptions
-	--SetCVar("UnitNameOwn", "0");
-	--SetCVar("UnitNameNonCombatCreatureName", "0");
-	SetCVar("UnitNameFriendlyPlayerName", "1")
-	SetCVar("UnitNameFriendlyMinionName", "1")
-	SetCVar("UnitNameEnemyPlayerName", "1")
-	SetCVar("UnitNameEnemyMinionName", "1")
+	C_CVar.SetCVar("statusText","1")
+	C_CVar.SetCVar("statusTextDisplay","NUMERIC")
+	C_CVar.SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
+	C_CVar.SetCVar("nameplateShowFriends", 1) -- show for friendly units
+	C_CVar.SetCVar("nameplateShowEnemies", 1) -- Enemy
+	C_CVar.SetCVar("nameplateShowEnemyMinus", 1) -- Enemy Minors
+	C_CVar.SetCVar("nameplateMaxDistance", 100) --default 60
+	C_CVar.SetCVar("UnitNameNPC", "0") --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
+	C_CVar.SetCVar("UnitNameFriendlyPlayerName", "1")
+	C_CVar.SetCVar("UnitNameFriendlyMinionName", "1")
+	C_CVar.SetCVar("UnitNameEnemyPlayerName", "1")
+	C_CVar.SetCVar("UnitNameEnemyMinionName", "1")
 
 	--NOW LOAD ALL THE MODULES
 	for i=1, #addon.moduleFuncs do
@@ -277,59 +176,9 @@ function addon:EnableAddon()
 		end
 	end
 
-	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
-end
-
-----------------------------------------------------------------
----Open all bags when at bank
-----------------------------------------------------------------
-addon:RegisterEvent("BANKFRAME_OPENED")
-
-function addon:BANKFRAME_OPENED()
-	local numSlots, full
-	local i
-
-	numSlots, full = GetNumBankSlots()
-	for i = 0, numSlots do
-		OpenBag(NUM_BAG_SLOTS + 1 + i)
-	end
-end
-
-
-----------------------------------------------------------------
----Collaspe Objective tracker in dungeons and raids
-----------------------------------------------------------------
-addon:RegisterEvent("PLAYER_REGEN_ENABLED")
-addon:RegisterEvent("PLAYER_REGEN_DISABLED")
-addon:RegisterEvent("PLAYER_ENTERING_WORLD")
-
--- ObjectiveTrackerFrame:Hide()
--- ObjectiveTrackerFrame.Show = ObjectiveTrackerFrame.Hide
--- SLASH_SHOW1 = "/showit";
--- SlashCmdList.SHOW = function(arg)
-    -- ObjectiveTrackerFrame:SetShown(not ObjectiveTrackerFrame:IsShown())
--- end
-
-local function checkObjInstance(checkZone)
-	--/run if ObjectiveTrackerFrame:IsVisible() then ObjectiveTrackerFrame:Hide(); else ObjectiveTrackerFrame:Show(); end
-	--https://gitlab.ditlev.org/Zyano/elvui-classic/-/blob/5c7a74735b6331215b4159a535307ad3bc40e168/ElvUI/Modules/Blizzard/ObjectiveFrame.lua
+	SLASH_XANUI1 = "/xui";
+	SLASH_XANUI2 = "/xanui";
+	SlashCmdList["XANUI"] = XanUI_SlashCommand;
 	
-	--used to hide it but sometimes it shows information, just collaspe it
-	local typeInstance = select(2, IsInInstance())
-	if typeInstance == "party" or typeInstance == "raid" then
-		ObjectiveTracker_Collapse()
-	elseif checkZone then
-		--it's not a dungeon or raid so lets expand our quest tracker only when zoning
-		ObjectiveTracker_Expand()
-	end
-end
-
-function addon:PLAYER_REGEN_ENABLED()
-	checkObjInstance()
-end
-function addon:PLAYER_REGEN_DISABLED()
-	checkObjInstance()
-end
-function addon:PLAYER_ENTERING_WORLD()
-	checkObjInstance(true)
+	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
 end

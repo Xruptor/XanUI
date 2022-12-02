@@ -43,7 +43,7 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 	--only do the talking head filtering in instances, in outside world for quests and stuff don't filter it
 	if inInstance and vo then
 		if not talkingHeadDB[vo] then
-			_G.TalkingHeadFrame_PlayCurrent()
+			_G.TalkingHeadFrame:PlayCurrent()
 			talkingHeadDB[vo] = true
 		else
 			--don't spam the notice
@@ -54,7 +54,7 @@ function eventFrame:TALKINGHEAD_REQUESTED()
 			end
 		end
 	else
-		_G.TalkingHeadFrame_PlayCurrent()
+		_G.TalkingHeadFrame:PlayCurrent()
 	end
 	
 end

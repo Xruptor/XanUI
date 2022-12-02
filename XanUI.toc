@@ -1,7 +1,7 @@
-## Interface: 90005
+## Interface: 100002
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  4.1
+## Version:  4.2
 ## Notes: Personal customizations and features added to the default UI.
 ## SavedVariables: XanUIDB, QuestPlateSettings
 
@@ -9,25 +9,9 @@ libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 libs\AceTimer-3.0\AceTimer-3.0.xml
 
-modules\questplates\semlib\semlib.xml
-modules\questplates\questplates.lua
-
 xanUI.lua
 
-modules\colorhealthbyclass.lua
 modules\addmissingstats.lua
-modules\movablepetbar.lua
-modules\tooltipicons.lua
 modules\selljunkautorepair.lua
-modules\healthpercentdisplay.lua
-modules\classic_colorednameplates.lua
-modules\rightclickselfcast.lua
 modules\filtertalkingheads.lua
-modules\specindicators.lua
-modules\achievementgreencheckmark.lua
-modules\showmailboxgold.lua
-modules\factionicons.lua
-modules\hidetooltipincombat.lua
-modules\soundalerts.lua
-modules\errorframefilter.lua
-modules\enhancedtooltips.lua
+modules\questicons.lua

@@ -14,6 +14,17 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 
+local WOW_PROJECT_ID = _G.WOW_PROJECT_ID
+local WOW_PROJECT_MAINLINE = _G.WOW_PROJECT_MAINLINE
+local WOW_PROJECT_CLASSIC = _G.WOW_PROJECT_CLASSIC
+--local WOW_PROJECT_BURNING_CRUSADE_CLASSIC = _G.WOW_PROJECT_BURNING_CRUSADE_CLASSIC
+local WOW_PROJECT_WRATH_CLASSIC = _G.WOW_PROJECT_WRATH_CLASSIC
+
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local IsClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+--local IsTBC_C = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
+local IsWLK_C = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
+
 ----------------------------------------------------------------
 ---Sell Junk at Vendors
 ----------------------------------------------------------------
@@ -51,8 +62,25 @@ function eventFrame:StopSellingTimer(endedEarly)
 	end		
 end
 
+local function GetBagSlots(bagType)
+	if bagType == "bag" then
+		if IsRetail then
+			return BACKPACK_CONTAINER, NUM_TOTAL_EQUIPPED_BAG_SLOTS 
+		else
+			return BACKPACK_CONTAINER, BACKPACK_CONTAINER + NUM_BAG_SLOTS
+		end
+
+	elseif bagType == "bank" then
+		if IsRetail then
+			return NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + NUM_BANKBAGSLOTS
+		else
+			return NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
+		end
+	end
+end
+
 function eventFrame:MERCHANT_SHOW()
-	
+
 	--reset our variables
 	eventFrame.moneyCount = 0
 	eventFrame.itemCount = 0
@@ -60,20 +88,47 @@ function eventFrame:MERCHANT_SHOW()
 	eventFrame.totalSlots = 0
 	eventFrame.sellIndexCount = 0
 	
+	local xGetNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+	local xGetContainerInfo = (C_Container and C_Container.GetContainerItemInfo) or GetContainerItemInfo
+	local xGetContainerItemDurability = (C_Container and C_Container.GetContainerItemDurability) or GetContainerItemDurability
+	local xGetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
+	local xUseContainerItem = (C_Container and C_Container.UseContainerItem) or UseContainerItem
+	
+	local minCnt, maxCnt = GetBagSlots("bag")
+	
 	-- gather info
-	for bag = 0, NUM_BAG_SLOTS do
-		for slot = 1, GetContainerNumSlots(bag) do
-			local itemID = GetContainerItemID(bag, slot)
+	for bag = minCnt, maxCnt do
+		for slot = 1, xGetNumSlots(bag) do
+			local itemID = xGetContainerItemID(bag, slot)
+			
 			if itemID and not ignoreList[itemID] then
-				local _, stackCount, _, quality, _, _, itemLink, _, noValue = GetContainerItemInfo(bag, slot)
-				if quality == 0 and not noValue then
-					local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
-					--make sure it's not a quest item and it has a sell value
-					if itemType ~= "Quest" and quality == 0 and itemSellPrice > 0 then
-						local stackPrice = (itemSellPrice or 0) * stackCount
-						table.insert(eventFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
+				
+				local stackCount, quality, itemLink, noValue
+				
+				if IsRetail then
+				
+					local containerInfo = xGetContainerInfo(bag, slot)
+					if containerInfo and containerInfo.quality and containerInfo.quality == 0 and not containerInfo.hasNoValue then
+						local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
+						--make sure it's not a quest item and it has a sell value
+						if itemType ~= "Quest" and containerInfo.quality == 0 and itemSellPrice > 0 then
+							local stackPrice = (itemSellPrice or 0) * containerInfo.stackCount
+							table.insert(eventFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=containerInfo.stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
+						end
+					end
+
+				else
+					_, stackCount, _, quality, _, _, itemLink, _, noValue = xGetContainerInfo(bag, slot)
+					if quality == 0 and not noValue then
+						local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
+						--make sure it's not a quest item and it has a sell value
+						if itemType ~= "Quest" and quality == 0 and itemSellPrice > 0 then
+							local stackPrice = (itemSellPrice or 0) * stackCount
+							table.insert(eventFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
+						end
 					end
 				end
+				
 			end
 			eventFrame.totalSlots = eventFrame.totalSlots + 1
 		end
@@ -104,7 +159,7 @@ function eventFrame:MERCHANT_SHOW()
 				eventFrame.itemCount = eventFrame.itemCount + 1
 				
 				--print(eventFrame.itemCount , eventFrame.moneyCount)
-				UseContainerItem(eventFrame.GreyLootList[index].bag, eventFrame.GreyLootList[index].slot)	
+				xUseContainerItem(eventFrame.GreyLootList[index].bag, eventFrame.GreyLootList[index].slot)	
 			else
 				--we don't have another index so exit the timer
 				eventFrame:StopSellingTimer()

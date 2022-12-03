@@ -6,12 +6,9 @@ addon = _G[ADDON_NAME]
 
 local moduleName = "filtertalkingheads"
 
-local eventFrame = CreateFrame("frame", ADDON_NAME.."_"..moduleName, UIParent)
-eventFrame:SetScript("OnEvent", function(self, event, ...)
-	if self[event] then
-		return self[event](self, event, ...)
-	end
-end)
+addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local moduleFrame = addon[moduleName]
+LibStub("AceEvent-3.0"):Embed(moduleFrame)
 
 ----------------------------------------------------------------
 ---Shows talking head dialogue only once per session, don't spam it constantly
@@ -21,11 +18,11 @@ local talkingHeadDB = {}
 local lastTalkingVO = 0
 local lastText = "?"
 
-function eventFrame:TALKINGHEAD_REQUESTED()
+function moduleFrame:TALKINGHEAD_REQUESTED()
 	
-	if _G.TalkingHeadFrame and not eventFrame.talkingUnRegistered then
+	if _G.TalkingHeadFrame and not moduleFrame.talkingUnRegistered then
 		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
-		eventFrame.talkingUnRegistered = true
+		moduleFrame.talkingUnRegistered = true
 		return
 	end
 	
@@ -62,7 +59,7 @@ end
 local function EnableFilterTalkingHeads()
 	if not addon.IsRetail then return end
 	
-	eventFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+	moduleFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
 end
 
 --add to our module loader

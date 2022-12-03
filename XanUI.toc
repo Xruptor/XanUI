@@ -8,11 +8,14 @@
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 libs\AceTimer-3.0\AceTimer-3.0.xml
+libs\AceEvent-3.0\AceEvent-3.0.xml
 
 xanUI.lua
+
+modules\nameplates\nameplateHooks.lua
+modules\nameplates\racegenderplates.lua
+modules\nameplates\questicons.lua
 
 modules\addmissingstats.lua
 modules\selljunkautorepair.lua
 modules\filtertalkingheads.lua
-modules\racegenderplates.lua
-modules\questicons.lua

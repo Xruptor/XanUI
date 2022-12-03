@@ -7,12 +7,9 @@ addon = _G[ADDON_NAME]
 local moduleName = "selljunkautorepair"
 local LibAceTimer = LibStub('AceTimer-3.0')
 
-local eventFrame = CreateFrame("frame", ADDON_NAME.."_"..moduleName, UIParent)
-eventFrame:SetScript("OnEvent", function(self, event, ...)
-	if self[event] then
-		return self[event](self, event, ...)
-	end
-end)
+addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local moduleFrame = addon[moduleName]
+LibStub("AceEvent-3.0"):Embed(moduleFrame)
 
 local WOW_PROJECT_ID = _G.WOW_PROJECT_ID
 local WOW_PROJECT_MAINLINE = _G.WOW_PROJECT_MAINLINE
@@ -28,14 +25,13 @@ local IsWLK_C = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 ----------------------------------------------------------------
 ---Sell Junk at Vendors
 ----------------------------------------------------------------
-eventFrame:RegisterEvent("MERCHANT_SHOW")
 
 local doGuildRepairs = false
-eventFrame.GreyLootList = {}
-eventFrame.moneyCount = 0
-eventFrame.itemCount = 0
-eventFrame.sellAttempts = 0
-eventFrame.totalSlots = 0
+moduleFrame.GreyLootList = {}
+moduleFrame.moneyCount = 0
+moduleFrame.itemCount = 0
+moduleFrame.sellAttempts = 0
+moduleFrame.totalSlots = 0
 
 local ignoreList = {
 	[140662] = "Deformed Eredar Head", --warlock artifact quest
@@ -50,15 +46,15 @@ local ignoreList = {
 	------
 }
 
-function eventFrame:StopSellingTimer(endedEarly)
-	LibAceTimer:CancelTimer(eventFrame.sellGreyTimer)
-	eventFrame.sellGreyTimer = nil
+function moduleFrame:StopSellingTimer(endedEarly)
+	LibAceTimer:CancelTimer(moduleFrame.sellGreyTimer)
+	moduleFrame.sellGreyTimer = nil
 	if endedEarly then
 		DEFAULT_CHAT_FRAME:AddMessage("xanUI: (WARNING) you exited merchant before addon could finish selling greys.")
 	end
 
-	if eventFrame.moneyCount > 0 then
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..eventFrame.itemCount.."> Total grey items vendored. ["..GetCoinTextureString(eventFrame.moneyCount).."]")
+	if moduleFrame.moneyCount > 0 then
+		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..moduleFrame.itemCount.."> Total grey items vendored. ["..GetCoinTextureString(moduleFrame.moneyCount).."]")
 	end		
 end
 
@@ -79,14 +75,14 @@ local function GetBagSlots(bagType)
 	end
 end
 
-function eventFrame:MERCHANT_SHOW()
+function moduleFrame:MERCHANT_SHOW()
 
 	--reset our variables
-	eventFrame.moneyCount = 0
-	eventFrame.itemCount = 0
-	eventFrame.GreyLootList = {}
-	eventFrame.totalSlots = 0
-	eventFrame.sellIndexCount = 0
+	moduleFrame.moneyCount = 0
+	moduleFrame.itemCount = 0
+	moduleFrame.GreyLootList = {}
+	moduleFrame.totalSlots = 0
+	moduleFrame.sellIndexCount = 0
 	
 	local xGetNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
 	local xGetContainerInfo = (C_Container and C_Container.GetContainerItemInfo) or GetContainerItemInfo
@@ -113,7 +109,7 @@ function eventFrame:MERCHANT_SHOW()
 						--make sure it's not a quest item and it has a sell value
 						if itemType ~= "Quest" and containerInfo.quality == 0 and itemSellPrice > 0 then
 							local stackPrice = (itemSellPrice or 0) * containerInfo.stackCount
-							table.insert(eventFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=containerInfo.stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
+							table.insert(moduleFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=containerInfo.stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
 						end
 					end
 
@@ -124,45 +120,45 @@ function eventFrame:MERCHANT_SHOW()
 						--make sure it's not a quest item and it has a sell value
 						if itemType ~= "Quest" and quality == 0 and itemSellPrice > 0 then
 							local stackPrice = (itemSellPrice or 0) * stackCount
-							table.insert(eventFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
+							table.insert(moduleFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
 						end
 					end
 				end
 				
 			end
-			eventFrame.totalSlots = eventFrame.totalSlots + 1
+			moduleFrame.totalSlots = moduleFrame.totalSlots + 1
 		end
 	end
 	
 	--do the timer for selling, only if we have something to work with
-	if #eventFrame.GreyLootList > 0 and not eventFrame.sellGreyTimer then
-		eventFrame.sellGreyTimer = LibAceTimer:ScheduleRepeatingTimer(function()
+	if #moduleFrame.GreyLootList > 0 and not moduleFrame.sellGreyTimer then
+		moduleFrame.sellGreyTimer = LibAceTimer:ScheduleRepeatingTimer(function()
 			
 			--if they closed early then send a warning
-			if not MerchantFrame:IsVisible() then eventFrame:StopSellingTimer(true) end
+			if not MerchantFrame:IsVisible() then moduleFrame:StopSellingTimer(true) end
 			
 			--if our attempts are more than wants on the list or more than our total amount of slots then exit
-			if eventFrame.sellIndexCount > #eventFrame.GreyLootList or eventFrame.sellIndexCount >= eventFrame.totalSlots or eventFrame.sellIndexCount > 2000 then
-				eventFrame:StopSellingTimer()
+			if moduleFrame.sellIndexCount > #moduleFrame.GreyLootList or moduleFrame.sellIndexCount >= moduleFrame.totalSlots or moduleFrame.sellIndexCount > 2000 then
+				moduleFrame:StopSellingTimer()
 				return
 			end
 			
-			eventFrame.sellIndexCount = eventFrame.sellIndexCount + 1
+			moduleFrame.sellIndexCount = moduleFrame.sellIndexCount + 1
 			
 			--grab the next entry in our table
-			if eventFrame.GreyLootList[eventFrame.sellIndexCount] then
+			if moduleFrame.GreyLootList[moduleFrame.sellIndexCount] then
 			
-				local index = eventFrame.sellIndexCount
-				--print(index, eventFrame.GreyLootList[index].bag, eventFrame.GreyLootList[index].slot, eventFrame.GreyLootList[index].itemID, eventFrame.GreyLootList[index].stackCount, eventFrame.GreyLootList[index].stackPrice, eventFrame.GreyLootList[index].itemSellPrice)
+				local index = moduleFrame.sellIndexCount
+				--print(index, moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot, moduleFrame.GreyLootList[index].itemID, moduleFrame.GreyLootList[index].stackCount, moduleFrame.GreyLootList[index].stackPrice, moduleFrame.GreyLootList[index].itemSellPrice)
 				
-				eventFrame.moneyCount = eventFrame.moneyCount + eventFrame.GreyLootList[index].stackPrice
-				eventFrame.itemCount = eventFrame.itemCount + 1
+				moduleFrame.moneyCount = moduleFrame.moneyCount + moduleFrame.GreyLootList[index].stackPrice
+				moduleFrame.itemCount = moduleFrame.itemCount + 1
 				
-				--print(eventFrame.itemCount , eventFrame.moneyCount)
-				xUseContainerItem(eventFrame.GreyLootList[index].bag, eventFrame.GreyLootList[index].slot)	
+				--print(moduleFrame.itemCount , moduleFrame.moneyCount)
+				xUseContainerItem(moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot)	
 			else
 				--we don't have another index so exit the timer
-				eventFrame:StopSellingTimer()
+				moduleFrame:StopSellingTimer()
 			end
 		
 		end, 0.15)
@@ -197,3 +193,10 @@ function eventFrame:MERCHANT_SHOW()
 		end
 	end
 end
+
+local function EnableSellJunkAutoRepair()
+	moduleFrame:RegisterEvent("MERCHANT_SHOW")
+end
+
+--add to our module loader
+table.insert(addon.moduleFuncs, { func=EnableSellJunkAutoRepair, name=moduleName } )

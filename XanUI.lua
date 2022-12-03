@@ -8,6 +8,7 @@ if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
 addon = _G[ADDON_NAME]
+LibStub("AceEvent-3.0"):Embed(addon)
 
 addon.IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 addon.moduleFuncs = {}
@@ -17,27 +18,16 @@ local function Debug(...)
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
 end
 
-addon:RegisterEvent("ADDON_LOADED")
-addon:SetScript("OnEvent", function(self, event, ...)
-	if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
-		if event == "ADDON_LOADED" then
-			local arg1 = ...
-			if arg1 and arg1 == ADDON_NAME then
-				self:UnregisterEvent("ADDON_LOADED")
-				self:RegisterEvent("PLAYER_LOGIN")
-			end
-			return
-		end
-		if IsLoggedIn() then
-			self:EnableAddon(event, ...)
-			self:UnregisterEvent("PLAYER_LOGIN")
-		end
-		return
+local function OnEnable(event, arg1)
+	if event == "ADDON_LOADED" and arg1 and arg1 == ADDON_NAME then
+		addon:UnregisterEvent("ADDON_LOADED")
+		addon:RegisterEvent("PLAYER_LOGIN", OnEnable)
+	elseif event == "PLAYER_LOGIN" then
+		addon:UnregisterEvent("PLAYER_LOGIN")
+		addon:EnableAddon()
 	end
-	if self[event] then
-		return self[event](self, event, ...)
-	end
-end)
+end
+addon:RegisterEvent("ADDON_LOADED", OnEnable)
 
 function addon.CanAccessObject(obj)
 	return issecure() or not obj:IsForbidden();
@@ -55,6 +45,7 @@ function XanUI_SlashCommand(cmd)
 				XanUIDB.showRaceIcon = true
 			end
 			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20"..tostring(XanUIDB.showRaceIcon).."|r].")
+			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "gendericon" then
 			if XanUIDB.showGenderIcon then
@@ -63,6 +54,7 @@ function XanUI_SlashCommand(cmd)
 				XanUIDB.showGenderIcon = true
 			end
 			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderIcon).."|r].")
+			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "gendertext" then
 			if XanUIDB.showGenderText then
@@ -71,6 +63,7 @@ function XanUI_SlashCommand(cmd)
 				XanUIDB.showGenderText = true
 			end
 			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderText).."|r].")
+			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "onlydrac" then
 			if XanUIDB.onlyDracthyr then
@@ -79,6 +72,7 @@ function XanUI_SlashCommand(cmd)
 				XanUIDB.onlyDracthyr = true
 			end
 			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20"..tostring(XanUIDB.onlyDracthyr).."|r].")
+			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "showquests" then
 			if XanUIDB.showQuests then

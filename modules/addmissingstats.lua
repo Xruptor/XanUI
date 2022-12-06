@@ -55,6 +55,8 @@ end ]]
 local function EnableInsertStats()
 	if not addon.IsRetail then return end
 	
+	local _, playerClass = UnitClass("player")
+	
 	--1 is the top category with intellect and such, 2 is the second category
 	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" });
 	tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_AP" });

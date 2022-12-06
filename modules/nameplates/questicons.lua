@@ -10,22 +10,13 @@ addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, Backdrop
 local moduleFrame = addon[moduleName]
 LibStub("AceEvent-3.0"):Embed(moduleFrame)
 
+local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "QuestIcon"
 local ICON_PATH = "Interface\\AddOns\\"..ADDON_NAME.."\\media\\questicon_1"
 
 moduleFrame.QuestByTitle = {}
 moduleFrame.QuestByID = {}
 moduleFrame.QuestsToUpdate = {}
-
-local function tobool(obj)
-	if obj == nil then return false end
-	if tonumber(obj) and tonumber(obj) == 0 then
-		return false
-	elseif tonumber(obj) and tonumber(obj) == 1 then
-		return true
-	end
-	return obj
-end
 
 ----------------------------------------------
 ----- QUEST API
@@ -50,7 +41,9 @@ local function CacheQuest(questIndex, questID)
 	if questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
 		if qInfo then
-			if qInfo.title and not qInfo.isHeader then
+			--isBounty is the world map bounty quests. also known as daily emissary quests
+			--lets not record those, they are hidden anyways
+			if qInfo.title and not qInfo.isHeader and not qInfo.isBounty then
 				qInfo.tagInfo = C_QuestLog.GetQuestTagInfo(qInfo.questID) --grab the tags for things like worldquests
 				
 				moduleFrame.QuestByID[qInfo.questID] = qInfo.title
@@ -84,6 +77,32 @@ local function DoQuestLogCache(byPassUpdate)
 	end
 end
 
+local function ScanObjective(line)
+
+    local x, y = line:match('(%d+)/(%d+)')
+    x, y = tonumber(x), tonumber(y)
+
+    if x and y then
+        if x ~= y then
+            return false
+		else
+			--if it matches then it's objective complete
+			return true
+        end
+    else
+        x = line:match('%((%d+)%%%)')
+        x = tonumber(x)
+
+		--it's a power object, if 100 or greater then it's complete, otherwise false
+        if x and x < 100 then
+            return false
+		elseif x and x >= 100 then
+			return true
+        end
+    end
+
+end
+
 local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	if not f or not plate then return end
 	if not XanUIDB then return end
@@ -113,56 +132,53 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	TooltipUtil.SurfaceArgs(tooltipData)
 	
 	local questType = 0
-	local questFound = false
-	
+	local objCache = {}
+	local questIDCache = {}
+
 	--parse the tooltip data
 	if tooltipData and tooltipData.lines then
 		
 		for i = 3, #tooltipData.lines do
-			--only loop while we didn't find a quest to show an icon for
-			if questFound then
-				break
-			end
-			
+
 			local line = tooltipData.lines[i]
 			TooltipUtil.SurfaceArgs(line)
 			
 			if line then
 				local text = line.leftText
 				
-				if moduleFrame.QuestByTitle[text] then
+				if text and moduleFrame.QuestByTitle[text] then
 					local qInfo = moduleFrame.QuestByTitle[text]
 					
 					if qInfo.title and qInfo.questID then
 						local isDone = isQuestComplete(nil, qInfo.questID)
-						
-						if not isDone then
-						
-							if qInfo and qInfo.tagInfo and qInfo.tagInfo.worldQuestType then
-								questType = 2 --world quest
-								
-								local progress = C_TaskQuest.GetQuestProgressBarInfo(qInfo.questID)
-								if progress then
-									questType = 3 -- progress bar world type quest
-								end
-								
+
+						if qInfo.tagInfo and qInfo.tagInfo.worldQuestType then
+							questType = 2 --world quest
+							
+							local progress = C_TaskQuest.GetQuestProgressBarInfo(qInfo.questID)
+							if progress then
+								questType = 3 -- progress bar world type quest
+							end
+							
+						else
+							if C_QuestLog.IsQuestTask(qInfo.questID) then
+								questType = 4 -- it's a Bonus Objective
 							else
-								if C_QuestLog.IsQuestTask(qInfo.questID) then
-									questType = 4 -- it's a Bonus Objective
-								else
-									questType = 1 --regular quest
-								end
+								questType = 1 --regular quest
 							end
-							
-							--if we found something then break out of the tooltip for loop scanning
-							if questType > 0 then
-								questFound = true
-							end
-							
 						end
 						
+						table.insert(questIDCache, tostring(isDone))
 					end
-					
+
+				else
+					local obj = ScanObjective(text)
+
+					--we have something to work with
+					if obj ~= nil then
+						--if any of the objectives are incomplete then mark it as not done
+						table.insert(objCache, tostring(obj))
+					end
 				end
 				
 			end
@@ -171,9 +187,24 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 
 	end
 	
-	--do the quest icon
-	if questType > 0 and iconQuest then
+	--if we have something to work with and the first entry is still false, then the objective for quest or mob isn't done yet
+	--make sure to convert the value boolean to string for comparison
+	
+	--make sure the false is on the top, make sure to convert the booleans to strings
+	table.sort(objCache, function(a, b)
+		return tostring(a) < tostring(b);
+	end)
 
+	--only sort if we have no objectives information
+	if #objCache < 1 then
+		table.sort(questIDCache, function(a, b)
+			return tostring(a) < tostring(b);
+		end)
+	end
+
+	--only check the questIDCache if we don't have any returns on the objectives cache
+	if (#objCache > 0 and tostring(objCache[1]) == "false") or (#objCache < 1 and #questIDCache > 0 and tostring(questIDCache[1]) == "false")  then
+		
 		if questType == 1 then
 			--regular quest
 			iconQuest:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange much nicer
@@ -186,17 +217,20 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		elseif questType == 4 then
 			--it's probably a Bonus Objective
 			iconQuest:SetVertexColor(1, 181/255, 17/255, 0.9) --show a lighter orange almost gold color
+		else
+			--something went wrong and the quest didn't get a questType and it isn't completed, show it as a rose red color
+			iconQuest:SetVertexColor(1, 60/255, 56/255, 0.9) --rose color
 		end
 		
 		iconQuest:Show()
 		return --return so not to Hide below
+		
 	end
-	
-	if iconQuest then iconQuest:Hide() end
+
+	iconQuest:Hide()
 end
 
 local function OnTooltipSetUnit(tooltip, tooltipData)
-	local npHooks = addon["nameplateHooks"]
 	if not npHooks then return end
 	if not tooltipData or not tooltipData.guid then return end
 	
@@ -207,7 +241,6 @@ local function OnTooltipSetUnit(tooltip, tooltipData)
 end
 
 function moduleFrame:UpdateAllQuestIcons(trigger)
-	local npHooks = addon["nameplateHooks"]
 	if not npHooks then return end
 	
 	--make sure we have quest data to work with
@@ -319,6 +352,8 @@ function moduleFrame:XANUI_ON_PLATESHOW(event, f, plate, unitID)
 end
 
 function moduleFrame:XANUI_ON_PLATEHIDE(event, f, plate, unitID)
+	local iconQuest = f[iconKey]
+
 	if f[iconQuest] then
 		f[iconQuest]:Hide()
 	end

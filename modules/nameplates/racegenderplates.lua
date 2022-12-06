@@ -10,6 +10,7 @@ addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, Backdrop
 local moduleFrame = addon[moduleName]
 LibStub("AceEvent-3.0"):Embed(moduleFrame)
 
+local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "IconRace"
 local iconKeyGender = ADDON_NAME .. "IconGender"
  
@@ -176,7 +177,6 @@ local function UpdateIcons(f, plate, unitID)
 end
  
 function moduleFrame:UpdateAllIcons()
-	local npHooks = addon["nameplateHooks"]
 	if not npHooks then return end
 	
 	for plate, f in pairs(npHooks:GetActiveNameplates()) do
@@ -217,7 +217,6 @@ function moduleFrame:XANUI_ON_PLATEHIDE(event, f, plate, unitID)
 end
 
 function moduleFrame:UNIT_NAME_UPDATE(event, unitID)
-	local npHooks = addon["nameplateHooks"]
 	if not npHooks then return end
 	
 	local plate, f = npHooks:GetPlateForUnit(unitID)

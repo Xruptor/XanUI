@@ -13,6 +13,7 @@ LibStub("AceEvent-3.0"):Embed(moduleFrame)
 local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "IconRace"
 local iconKeyGender = ADDON_NAME .. "IconGender"
+local iconKeyGenderLabel = ADDON_NAME .. "GenderLabel"
  
 local genders = {nil, "male", "female"}
 
@@ -37,18 +38,96 @@ function GetGenderAtlases(genderName)
 	return baseAtlas, selectedAtlas
 end
 
+CUSTOM_FACTION_BAR_COLORS = {
+    [1] = {r = 1, g = 0, b = 0},
+    [2] = {r = 1, g = 0, b = 0},
+    [3] = {r = 1, g = 1, b = 0},
+    [4] = {r = 1, g = 1, b = 0},
+    [5] = {r = 0, g = 1, b = 0},
+    [6] = {r = 0, g = 1, b = 0},
+    [7] = {r = 0, g = 1, b = 0},
+    [8] = {r = 0, g = 1, b = 0},
+}
+
+function GetUnitColor(unit)
+ 
+    local r, g, b
+ 
+    if (UnitIsDead(unit) or UnitIsGhost(unit) or UnitIsTapDenied(unit)) then
+        r = 0.5
+        g = 0.5
+        b = 0.5
+    elseif (UnitIsPlayer(unit)) then
+        if (UnitIsFriend(unit, 'player')) then
+            local _, class = UnitClass(unit)
+            if ( class ) then
+                r = RAID_CLASS_COLORS[class].r
+                g = RAID_CLASS_COLORS[class].g
+                b = RAID_CLASS_COLORS[class].b
+            else
+                r = 0.60
+                g = 0.60
+                b = 0.60
+            end
+        elseif (not UnitIsFriend(unit, 'player')) then
+            r = 1
+            g = 0
+            b = 0
+        end
+    elseif (UnitPlayerControlled(unit)) then
+        if (UnitCanAttack(unit, 'player')) then
+            if (not UnitCanAttack('player', unit)) then
+                r = 157/255
+                g = 197/255
+                b = 255/255
+            else
+                r = 1
+                g = 0
+                b = 0
+            end
+        elseif (UnitCanAttack('player', unit)) then
+            r = 1
+            g = 1
+            b = 0
+        elseif (UnitIsPVP(unit)) then
+            r = 0
+            g = 1
+            b = 0
+        else
+            r = 157/255
+            g = 197/255
+            b = 255/255
+        end
+    else
+        local reaction = UnitReaction(unit, 'player')
+ 
+        if (reaction) then
+            r = CUSTOM_FACTION_BAR_COLORS[reaction].r
+            g = CUSTOM_FACTION_BAR_COLORS[reaction].g
+            b = CUSTOM_FACTION_BAR_COLORS[reaction].b
+        else
+            r = 157/255
+            g = 197/255
+            b = 255/255
+        end
+    end
+ 
+    return r, g, b
+end
+
 local function UpdateIcons(f, plate, unitID)
 	if not f or not plate then return end
 	if not XanUIDB then return end
 
 	local iconRace = f[iconKey]
 	local iconGender = f[iconKeyGender]
+	local genderLabel = f[iconKeyGenderLabel]
 	local dontHide
 	
 	--RACE ICON
 	dontHide = false
 	
-	if XanUIDB.showRaceIcon and UnitIsPlayer(unitID) then
+	if iconRace and XanUIDB.showRaceIcon and UnitIsPlayer(unitID) then
 		local texture
 		local _, race = UnitRace(unitID)
 		local sexID = UnitSex(unitID)
@@ -86,9 +165,9 @@ local function UpdateIcons(f, plate, unitID)
 	--GENDER ICON
 	dontHide = false
 	
-	if XanUIDB.showGenderIcon then
+	if iconGender and XanUIDB.showGenderIcon then
 		
-		if UnitIsPlayer(unitID) then
+		if UnitIsPlayer(unitID) and UnitName(unitID) ~= UnitName("player") then
 		
 			local texture
 			local _, race = UnitRace(unitID)
@@ -133,7 +212,7 @@ local function UpdateIcons(f, plate, unitID)
 	--GENDER TEXT
 	dontHide = false
 	
-	if XanUIDB.showGenderText then
+	if genderLabel and XanUIDB.showGenderText and UnitName(unitID) ~= UnitName("player") then
 	
 		local _, race = UnitRace(unitID)
 		local sexID = UnitSex(unitID)
@@ -142,36 +221,34 @@ local function UpdateIcons(f, plate, unitID)
 		
 			if not XanUIDB.onlyDracthyr or (XanUIDB.onlyDracthyr and race:lower() == "dracthyr") then
 				
-				if plate.UnitFrame and plate.UnitFrame.name then
-					
-					local getName = UnitName(unitID)
-					
-					if getName then
-						if genders[sexID] == "male" then
-							getName = getName.." [M]"
-							plate.UnitFrame.name:SetText(getName)
-							f.genderTextOn = true
-							dontHide = true
-						elseif genders[sexID] == "female" then
-							getName = getName.." [F]"
-							plate.UnitFrame.name:SetText(getName)
-							f.genderTextOn = true
-							dontHide = true
-						end
-					end
+				local getName = UnitName(unitID)
+				local r, g, b = GetUnitColor(unitID)
 
+				if not r then
+					r, g, b = 0.6, 0.6, 1
+				end
+				genderLabel:SetTextColor(r, g, b, 1.0)
+
+				if getName then
+					if genders[sexID] == "male" then
+						genderLabel:SetText("[M]")
+						genderLabel:SetPoint("LEFT",-9,5)
+						genderLabel:Show()
+						dontHide = true
+					elseif genders[sexID] == "female" then
+						genderLabel:SetText("[F]")
+						genderLabel:SetPoint("LEFT",-4,5)
+						genderLabel:Show()
+						dontHide = true
+					end
 				end
 				
 			end
 		end
-		
+
 	end
-	if not dontHide and f.genderTextOn and plate.UnitFrame and plate.UnitFrame.name then
-		local getName = UnitName(unitID)
-		if getName then
-			plate.UnitFrame.name:SetText(getName)
-			f.genderTextOn = false
-		end
+	if not dontHide and genderLabel then
+		genderLabel:Hide()
 	end
 	
 end
@@ -187,6 +264,7 @@ end
 function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 	local iconRace = f[iconKey]
 	local iconGender = f[iconKeyGender]
+	local genderLabel = f[iconKeyGenderLabel]
 	
 	if not iconRace then
 		iconRace = f:CreateTexture(nil, "OVERLAY")
@@ -200,6 +278,15 @@ function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 		iconGender:SetPoint('RIGHT', 10, -5)
 		iconGender:SetSize(16, 16)
 		iconGender:Hide()
+	end
+	if not genderLabel then
+		genderLabel = f:CreateFontString(nil, "ARTWORK", "SystemFont_NamePlate")
+		f[iconKeyGenderLabel] = genderLabel
+		genderLabel:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+		genderLabel:SetJustifyH("LEFT")
+		genderLabel:SetPoint("LEFT",-5,5)
+		genderLabel:SetText("[M]")
+		genderLabel:Hide()
 	end
 end
 

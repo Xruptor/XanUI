@@ -172,6 +172,11 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 					end
 
 				else
+					--okay so technically speaking we could have scanned each objective using code instead of scanning the tooltip.
+					--the problem is that although an objective can be marked as uncompleted, it may not exactly apply to the current unit being parsed.
+					--in other words their part in the quest MAY be completed, but another unit required may not and still be part of the quest.
+					--So if I were to scan for all objectives not finished, it would mark units that ARE completed in the quest as unfinished.
+					--Hence, it's just better to scan the tooltip to see the objectives being applied to a particular unit.
 					local obj = ScanObjective(text)
 
 					--we have something to work with
@@ -194,16 +199,33 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	table.sort(objCache, function(a, b)
 		return tostring(a) < tostring(b);
 	end)
+	table.sort(questIDCache, function(a, b)
+		return tostring(a) < tostring(b);
+	end)
 
-	--only sort if we have no objectives information
-	if #objCache < 1 then
-		table.sort(questIDCache, function(a, b)
-			return tostring(a) < tostring(b);
-		end)
+	local doIcon = false
+
+	--if we do have objectives and at least one is uncomplete, then process
+	if #objCache > 0 and tostring(objCache[1]) == "false" then
+
+		--if we don't have any quest found, it's probably a party members quest.
+		if #questIDCache < 1 then
+			questType = 5 --set to party member, fel green color
+
+		--if all quests are completed and we still have uncompleted objectives, chances are its a party members quests
+		elseif tostring(questIDCache[1]) == "true" then
+			questType = 5 --set to party member, fel green color
+		end
+
+		doIcon = true
+
+	--if we don't have objectives but at least one of our quests isn't completed, then show the icon anyways
+	elseif #objCache < 1 and #questIDCache > 0 and tostring(questIDCache[1]) == "false"  then
+		doIcon = true
 	end
 
 	--only check the questIDCache if we don't have any returns on the objectives cache
-	if (#objCache > 0 and tostring(objCache[1]) == "false") or (#objCache < 1 and #questIDCache > 0 and tostring(questIDCache[1]) == "false")  then
+	if doIcon then
 		
 		if questType == 1 then
 			--regular quest
@@ -217,6 +239,9 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		elseif questType == 4 then
 			--it's probably a Bonus Objective
 			iconQuest:SetVertexColor(1, 181/255, 17/255, 0.9) --show a lighter orange almost gold color
+		elseif questType == 5 then
+			--party member quest
+			iconQuest:SetVertexColor(77/255, 216/255, 39/255, 0.9) --show fel green color		
 		else
 			--something went wrong and the quest didn't get a questType and it isn't completed, show it as a rose red color
 			iconQuest:SetVertexColor(1, 60/255, 56/255, 0.9) --rose color

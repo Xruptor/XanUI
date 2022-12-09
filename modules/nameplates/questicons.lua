@@ -18,11 +18,17 @@ moduleFrame.QuestByTitle = {}
 moduleFrame.QuestByID = {}
 moduleFrame.QuestsToUpdate = {}
 
+local debugf = tekDebug and tekDebug:GetFrame(ADDON_NAME)
+local function Debug(...)
+    if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
+end
+
 ----------------------------------------------
 ----- QUEST API
 ----------------------------------------------
 
 local function isQuestComplete(questIndex, questID)
+	Debug("isQuestComplete", questIndex, questID)
 	if questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
 		if qInfo and C_QuestLog.IsComplete(qInfo.questID) then
@@ -38,16 +44,22 @@ local function isQuestComplete(questIndex, questID)
 end
 
 local function CacheQuest(questIndex, questID)
-	if questIndex then
+	if questID and C_QuestLog.IsQuestTask(questID) then
+		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
+		if questName then
+			moduleFrame.QuestByID[questID] = questName
+			moduleFrame.QuestByTitle[questName] = questID
+		end
+		Debug("CacheQuest", "C_TaskQuest", questID, questName)
+	elseif questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
 		if qInfo then
 			--isBounty is the world map bounty quests. also known as daily emissary quests
 			--lets not record those, they are hidden anyways
-			if qInfo.title and not qInfo.isHeader and not qInfo.isBounty then
-				qInfo.tagInfo = C_QuestLog.GetQuestTagInfo(qInfo.questID) --grab the tags for things like worldquests
-				
+			if qInfo.title and not qInfo.isHeader then
 				moduleFrame.QuestByID[qInfo.questID] = qInfo.title
-				moduleFrame.QuestByTitle[qInfo.title] = qInfo
+				moduleFrame.QuestByTitle[qInfo.title] = qInfo.questID
+				Debug("CacheQuest", "questIndex", qInfo.questID, qInfo.title)
 			end
 		else
 			--we need to grab the quest info when it's sent back from the server
@@ -57,6 +69,7 @@ local function CacheQuest(questIndex, questID)
 end
 
 local function CacheQuestByQuestID(questID)
+	Debug("CacheQuestByQuestID", questID)
 	if questID then
 		local questIndex = C_QuestLog.GetLogIndexForQuestID(questID)
 		CacheQuest(questIndex, questID)
@@ -64,6 +77,7 @@ local function CacheQuestByQuestID(questID)
 end
 
 local function DoQuestLogCache(byPassUpdate)
+	Debug("DoQuestLogCache", byPassUpdate)
 	--reset these values
 	moduleFrame.QuestByTitle = {}
 	moduleFrame.QuestByID = {}
@@ -108,6 +122,8 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	if not XanUIDB then return end
 	
 	local iconQuest = f[iconKey]
+	Debug("------------------")
+	Debug("UpdateQuestIcon", unitID)
 
 	--just in case check to see if we have the icon
 	if not iconQuest then
@@ -134,6 +150,13 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	local questType = 0
 	local objCache = {}
 	local questIDCache = {}
+	local scenarioName
+
+	--sometimes we are in a scenario that isn't exactly a task quest or treated as an bonus objective.  Example:  Dragonflight -> Grand Hunts
+	--so we need to grab the scenario name to check for that if available
+	if C_Scenario.IsInScenario() then
+		scenarioName = C_Scenario.GetInfo()
+	end
 
 	--parse the tooltip data
 	if tooltipData and tooltipData.lines then
@@ -145,32 +168,37 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 			
 			if line then
 				local text = line.leftText
-				
-				if text and moduleFrame.QuestByTitle[text] then
-					local qInfo = moduleFrame.QuestByTitle[text]
-					
-					if qInfo.title and qInfo.questID then
-						local isDone = isQuestComplete(nil, qInfo.questID)
 
-						if qInfo.tagInfo and qInfo.tagInfo.worldQuestType then
+				if text and moduleFrame.QuestByTitle[text] then
+					local questID = moduleFrame.QuestByTitle[text]
+
+					if questID then
+						local isDone = isQuestComplete(nil, questID)
+
+						if C_QuestLog.IsWorldQuest(questID) then
 							questType = 2 --world quest
 							
-							local progress = C_TaskQuest.GetQuestProgressBarInfo(qInfo.questID)
+							local progress = C_TaskQuest.GetQuestProgressBarInfo(questID)
 							if progress then
 								questType = 3 -- progress bar world type quest
 							end
 							
 						else
-							if C_QuestLog.IsQuestTask(qInfo.questID) then
+							if C_QuestLog.IsQuestTask(questID) then
 								questType = 4 -- it's a Bonus Objective
 							else
 								questType = 1 --regular quest
 							end
 						end
-						
-						table.insert(questIDCache, tostring(isDone))
-					end
 
+						table.insert(questIDCache, tostring(isDone))
+						Debug("UpdateQuestIcon", "TooltipData", text, questID, isDone, questType, #questIDCache)
+					end
+				
+				elseif text and scenarioName and text == scenarioName then
+					questType = 4 -- it's a Scenario quest (bonus objective)
+					table.insert(questIDCache, tostring(false))
+					Debug("UpdateQuestIcon", "scenarioName", scenarioName, questType, #questIDCache)
 				else
 					--okay so technically speaking we could have scanned each objective using code instead of scanning the tooltip.
 					--the problem is that although an objective can be marked as uncompleted, it may not exactly apply to the current unit being parsed.
@@ -183,6 +211,7 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 					if obj ~= nil then
 						--if any of the objectives are incomplete then mark it as not done
 						table.insert(objCache, tostring(obj))
+						Debug("UpdateQuestIcon", "ScanObjective", obj, #objCache)
 					end
 				end
 				
@@ -203,30 +232,38 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		return tostring(a) < tostring(b);
 	end)
 
+	Debug("UpdateQuestIcon", "Totals", #objCache, #questIDCache)
+
 	local doIcon = false
 
 	--if we do have objectives and at least one is uncomplete, then process
 	if #objCache > 0 and tostring(objCache[1]) == "false" then
 
-		--if we don't have any quest found, it's probably a party members quest.
-		if #questIDCache < 1 then
-			questType = 5 --set to party member, fel green color
+		local partyChk = 0
 
+		--if we don't have any quest found, it's probably a party members quest.
+		if #questIDCache < 1 or questType == 0 then
+			questType = 5 --set to party member, fel green color
+			partyChk = 1
 		--if all quests are completed and we still have uncompleted objectives, chances are its a party members quests
 		elseif tostring(questIDCache[1]) == "true" then
 			questType = 5 --set to party member, fel green color
+			partyChk = 2
 		end
 
 		doIcon = true
+		Debug("UpdateQuestIcon", "Chk1", #objCache, #questIDCache, questType, partyChk)
 
 	--if we don't have objectives but at least one of our quests isn't completed, then show the icon anyways
 	elseif #objCache < 1 and #questIDCache > 0 and tostring(questIDCache[1]) == "false"  then
 		doIcon = true
+		Debug("UpdateQuestIcon", "Chk2", #objCache, #questIDCache)
 	end
 
 	--only check the questIDCache if we don't have any returns on the objectives cache
 	if doIcon then
-		
+		Debug("UpdateQuestIcon", "doIcon", doIcon, questType)
+
 		if questType == 1 then
 			--regular quest
 			iconQuest:SetVertexColor(0.9, 0.4, 0.04, 0.9) --show orange much nicer
@@ -238,7 +275,7 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 			iconQuest:SetVertexColor(0.3, 0.3, 1, 0.9) --dark blue tint
 		elseif questType == 4 then
 			--it's probably a Bonus Objective
-			iconQuest:SetVertexColor(1, 181/255, 17/255, 0.9) --show a lighter orange almost gold color
+			iconQuest:SetVertexColor(202/255, 128/255, 231/255, 0.9) --show a lavender purple color
 		elseif questType == 5 then
 			--party member quest
 			iconQuest:SetVertexColor(77/255, 216/255, 39/255, 0.9) --show fel green color		
@@ -267,7 +304,8 @@ end
 
 function moduleFrame:UpdateAllQuestIcons(trigger)
 	if not npHooks then return end
-	
+	Debug("UpdateAllQuestIcons", trigger)
+
 	--make sure we have quest data to work with
 	if not moduleFrame.scannedQuestLog then
 		moduleFrame.scannedQuestLog = true
@@ -288,8 +326,8 @@ function moduleFrame:QUEST_LOG_UPDATE()
 		moduleFrame.updateQuestLog = false
 
 		for questID, qTitle in pairs(moduleFrame.QuestsToUpdate) do
-			local qObj = moduleFrame.QuestByTitle[qTitle]
-			if not qObj then
+			local tmpID = moduleFrame.QuestByTitle[qTitle]
+			if not tmpID then
 				CacheQuestByQuestID(questID)
 			end
 			moduleFrame.QuestsToUpdate[questID] = nil
@@ -300,11 +338,13 @@ function moduleFrame:QUEST_LOG_UPDATE()
 
 	if not moduleFrame.scannedQuestLog then
 		moduleFrame.scannedQuestLog = true
-		DoQuestLogCache(true)
+		DoQuestLogCache()
 	end
 end
 
 function moduleFrame:QUEST_ACCEPTED(event, questID)
+	Debug("QUEST_ACCEPTED", questID)
+
 	CacheQuestByQuestID(questID)
 	if moduleFrame.QuestByID[questID] == "UpdatePending" then
 		C_QuestLog.RequestLoadmoduleFrame.QuestByID(questID)
@@ -313,6 +353,8 @@ function moduleFrame:QUEST_ACCEPTED(event, questID)
 end
 
 function moduleFrame:QUEST_REMOVED(event, questID)
+	Debug("QUEST_REMOVED", questID)
+
 	local qTitle = moduleFrame.QuestByID[questID]
 
 	moduleFrame.QuestByID[questID] = nil
@@ -333,6 +375,8 @@ function moduleFrame:QUEST_DATA_LOAD_RESULT(event, questID, success)
 end
 
 function moduleFrame:QUEST_WATCH_UPDATE(event, questID)
+	Debug("QUEST_WATCH_UPDATE", questID)
+
 	local questIndex = C_QuestLog.GetLogIndexForQuestID(questID)
 	if questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
@@ -344,6 +388,7 @@ end
 
 function moduleFrame:UNIT_QUEST_LOG_CHANGED(event, unitID)
 	if unitID == "player" then
+		Debug("UNIT_QUEST_LOG_CHANGED")
 		moduleFrame.updateQuestLog = true
 	end
 end
@@ -351,7 +396,7 @@ end
 function moduleFrame:UI_SCALE_CHANGED()
 	if not moduleFrame.scannedQuestLog then
 		moduleFrame.scannedQuestLog = true
-		DoQuestLogCache(true)
+		DoQuestLogCache()
 	end
 end
 
@@ -398,6 +443,9 @@ local function EnableQuestIcons()
 	moduleFrame:RegisterEvent("QUEST_WATCH_UPDATE")
 	moduleFrame:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
 	moduleFrame:RegisterEvent("UI_SCALE_CHANGED")
+
+	--QUESTTASK_UPDATE
+	--TASK_PROGRESS_UPDATE
 
 	moduleFrame:RegisterEvent("PLAYER_ENTERING_WORLD", function() moduleFrame:UpdateAllQuestIcons("PLAYER_ENTERING_WORLD") end)
 	moduleFrame:RegisterMessage('XANUI_ON_NEWPLATE')

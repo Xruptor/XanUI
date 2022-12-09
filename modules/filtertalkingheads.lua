@@ -18,48 +18,33 @@ local talkingHeadDB = {}
 local lastTalkingVO = 0
 local lastText = "?"
 
-function moduleFrame:TALKINGHEAD_REQUESTED()
-	
-	if _G.TalkingHeadFrame and not moduleFrame.talkingUnRegistered then
-		_G.TalkingHeadFrame:UnregisterEvent('TALKINGHEAD_REQUESTED')
-		moduleFrame.talkingUnRegistered = true
-		return
-	end
-	
-	local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
-	
-	--Another way to do the filtering but it's a bit odd as sometimes the audio plays briefly.
-	-- if (talkingHeadDB[vo]) then
-		-- C_Timer.After(1, TalkingHeadFrame_CloseImmediately)
-	-- else
-		-- talkingHeadDB[vo] = true
-	-- end
-	
-	local inInstance, instanceType = IsInInstance()
-
-	--only do the talking head filtering in instances, in outside world for quests and stuff don't filter it
-	if inInstance and vo then
-		if not talkingHeadDB[vo] then
-			_G.TalkingHeadFrame:PlayCurrent()
-			talkingHeadDB[vo] = true
-		else
-			--don't spam the notice
-			if lastTalkingVO ~= vo or lastText ~= text then
-				DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
-				lastTalkingVO = vo
-				lastText = text
-			end
-		end
-	else
-		_G.TalkingHeadFrame:PlayCurrent()
-	end
-	
-end
-
 local function EnableFilterTalkingHeads()
 	if not addon.IsRetail then return end
 	
-	moduleFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+	hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function(self)
+
+		--https://github.com/tomrus88/BlizzardInterfaceCode/blob/c8c436d8b47a53472bee62c9af06dea1cb50f868/Interface/FrameXML/TalkingHeadUI.lua
+		local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
+		
+		local inInstance, instanceType = IsInInstance()
+
+		--only do the filtering in dungeons or instances, in outside world for quests, allow it
+		if inInstance and vo and text then
+			if not talkingHeadDB[vo] then
+				talkingHeadDB[vo] = true
+			else
+				--don't spam the notice
+				if lastTalkingVO ~= vo or lastText ~= text then
+					DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
+					lastTalkingVO = vo
+					lastText = text
+				end
+				self:CloseImmediately()
+			end
+		end
+
+	end)
+
 end
 
 --add to our module loader

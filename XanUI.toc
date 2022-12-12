@@ -1,7 +1,7 @@
 ## Interface: 100002
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  4.2
+## Version:  4.3
 ## Notes: Personal customizations and features added to the default UI.
 ## SavedVariables: XanUIDB, QuestPlateSettings
 

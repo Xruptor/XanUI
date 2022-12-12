@@ -18,9 +18,20 @@ moduleFrame.QuestByTitle = {}
 moduleFrame.QuestByID = {}
 moduleFrame.QuestsToUpdate = {}
 
+local enableDebug = false
+
 local debugf = tekDebug and tekDebug:GetFrame(ADDON_NAME)
 local function Debug(...)
+	if not enableDebug then return end
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
+end
+
+local function GetHashTableLen(tbl)
+	local count = 0
+	for _, __ in pairs(tbl) do
+		count = count + 1
+	end
+	return count
 end
 
 ----------------------------------------------
@@ -135,16 +146,21 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		iconQuest:Hide()
 	end
 	
-	--make sure we have quest data to work with, in case we haven't scanned yet
-	if not moduleFrame.scannedQuestLog then
-		moduleFrame.scannedQuestLog = true
-		DoQuestLogCache(true)
+	--don't do these things when in a BattlePet battle
+	if C_PetBattles.IsInBattle() then
+		iconQuest:Hide()
+		return
 	end
 	
 	--check tooltipData
 	if not tooltipData then
 		tooltipData = C_TooltipInfo.GetUnit(unitID)
 	end
+	if not tooltipData then
+		iconQuest:Hide()
+		return
+	end
+
 	TooltipUtil.SurfaceArgs(tooltipData)
 	
 	local questType = 0
@@ -306,12 +322,6 @@ function moduleFrame:UpdateAllQuestIcons(trigger)
 	if not npHooks then return end
 	Debug("UpdateAllQuestIcons", trigger)
 
-	--make sure we have quest data to work with
-	if not moduleFrame.scannedQuestLog then
-		moduleFrame.scannedQuestLog = true
-		DoQuestLogCache(true)
-	end
-	
 	for plate, f in pairs(npHooks:GetActiveNameplates()) do
 		UpdateQuestIcon(f, plate, f._unitID)
 	end
@@ -322,8 +332,10 @@ end
 ----------------------------------------------
 
 function moduleFrame:QUEST_LOG_UPDATE()
-	if moduleFrame.updateQuestLog then
-		moduleFrame.updateQuestLog = false
+	local numCount = GetHashTableLen(moduleFrame.QuestsToUpdate)
+
+	if numCount > 0 then
+		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate", numCount)
 
 		for questID, qTitle in pairs(moduleFrame.QuestsToUpdate) do
 			local tmpID = moduleFrame.QuestByTitle[qTitle]
@@ -333,11 +345,17 @@ function moduleFrame:QUEST_LOG_UPDATE()
 			moduleFrame.QuestsToUpdate[questID] = nil
 		end
 		
+		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate")
+
 		moduleFrame:UpdateAllQuestIcons("QUEST_LOG_UPDATE")
+		return
 	end
 
+	--we don't want to spam the grabbing of all the quests every time a quest is updated.
+	--instead we only want to update those individual quests that were updated.  If we were to spam the full quest log constantly each time, it would cause lag
 	if not moduleFrame.scannedQuestLog then
 		moduleFrame.scannedQuestLog = true
+		Debug("QUEST_LOG_UPDATE")
 		DoQuestLogCache()
 	end
 end
@@ -387,17 +405,17 @@ function moduleFrame:QUEST_WATCH_UPDATE(event, questID)
 end
 
 function moduleFrame:UNIT_QUEST_LOG_CHANGED(event, unitID)
+	Debug("UNIT_QUEST_LOG_CHANGED", unitID)
 	if unitID == "player" then
-		Debug("UNIT_QUEST_LOG_CHANGED")
-		moduleFrame.updateQuestLog = true
+		DoQuestLogCache()
+	else
+		moduleFrame:UpdateAllQuestIcons("UNIT_QUEST_LOG_CHANGED")
 	end
 end
 
 function moduleFrame:UI_SCALE_CHANGED()
-	if not moduleFrame.scannedQuestLog then
-		moduleFrame.scannedQuestLog = true
-		DoQuestLogCache()
-	end
+	Debug("UI_SCALE_CHANGED")
+	DoQuestLogCache()
 end
 
 ----------------------------------------------
@@ -435,8 +453,7 @@ end
 
 local function EnableQuestIcons()
 	if not addon.IsRetail then return end
-	
-	moduleFrame:RegisterEvent("QUEST_LOG_UPDATE")
+
 	moduleFrame:RegisterEvent("QUEST_ACCEPTED")
 	moduleFrame:RegisterEvent("QUEST_REMOVED")
 	moduleFrame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
@@ -447,7 +464,15 @@ local function EnableQuestIcons()
 	--QUESTTASK_UPDATE
 	--TASK_PROGRESS_UPDATE
 
-	moduleFrame:RegisterEvent("PLAYER_ENTERING_WORLD", function() moduleFrame:UpdateAllQuestIcons("PLAYER_ENTERING_WORLD") end)
+	moduleFrame:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+		moduleFrame:RegisterEvent("QUEST_LOG_UPDATE")
+		Debug("PLAYER_ENTERING_WORLD")
+	end)
+	moduleFrame:RegisterEvent("PLAYER_LEAVING_WORLD", function()
+		moduleFrame:UnregisterEvent('QUEST_LOG_UPDATE')
+		Debug("PLAYER_LEAVING_WORLD")
+	end)
+
 	moduleFrame:RegisterMessage('XANUI_ON_NEWPLATE')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATESHOW')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATEHIDE')

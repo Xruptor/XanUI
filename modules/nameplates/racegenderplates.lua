@@ -14,7 +14,7 @@ local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "IconRace"
 local iconKeyGender = ADDON_NAME .. "IconGender"
 local iconKeyGenderLabel = ADDON_NAME .. "GenderLabel"
- 
+
 local genders = {nil, "male", "female"}
 
 local fixedRaceAtlasNames = {
@@ -50,9 +50,9 @@ CUSTOM_FACTION_BAR_COLORS = {
 }
 
 function GetUnitColor(unit)
- 
+
     local r, g, b
- 
+
     if (UnitIsDead(unit) or UnitIsGhost(unit) or UnitIsTapDenied(unit)) then
         r = 0.5
         g = 0.5
@@ -100,7 +100,7 @@ function GetUnitColor(unit)
         end
     else
         local reaction = UnitReaction(unit, 'player')
- 
+
         if (reaction) then
             r = CUSTOM_FACTION_BAR_COLORS[reaction].r
             g = CUSTOM_FACTION_BAR_COLORS[reaction].g
@@ -111,7 +111,7 @@ function GetUnitColor(unit)
             b = 255/255
         end
     end
- 
+
     return r, g, b
 end
 
@@ -123,15 +123,15 @@ local function UpdateIcons(f, plate, unitID)
 	local iconGender = f[iconKeyGender]
 	local genderLabel = f[iconKeyGenderLabel]
 	local dontHide
-	
+
 	--RACE ICON
 	dontHide = false
-	
+
 	if iconRace and XanUIDB.showRaceIcon and UnitIsPlayer(unitID) then
 		local texture
 		local _, race = UnitRace(unitID)
 		local sexID = UnitSex(unitID)
-		
+
 		if sexID and race and genders[sexID] then
 			texture = GetRaceAtlas(race:lower(), genders[sexID], true)
 		end
@@ -149,7 +149,7 @@ local function UpdateIcons(f, plate, unitID)
 					-- icon:SetSize(24, 24)
 				--end
 			--end
-			
+
 			iconRace:ClearAllPoints()
 			iconRace:SetPoint('CENTER', -33, 30)
 			iconRace:SetSize(24, 24)
@@ -164,24 +164,24 @@ local function UpdateIcons(f, plate, unitID)
 
 	--GENDER ICON
 	dontHide = false
-	
+
 	if iconGender and XanUIDB.showGenderIcon then
-		
+
 		if UnitIsPlayer(unitID) and UnitName(unitID) ~= UnitName("player") then
-		
+
 			local texture
 			local _, race = UnitRace(unitID)
 			local sexID = UnitSex(unitID)
 
 			if sexID and race and genders[sexID] then
-				
+
 				if XanUIDB.showGenderIcon then
 
 					if not XanUIDB.onlyDracthyr or (XanUIDB.onlyDracthyr and race:lower() == "dracthyr") then
 						--local genderTex = GetGenderAtlases(genders[sexID])
 						--iconGender:SetAtlas(genderTex or nil)
 						--iconGender:SetTexCoord(left,right,top,bottom)
-						
+
 						if genders[sexID] == "male" then
 							iconGender:SetTexture(131149)
 							iconGender:SetTexCoord(0,0.5,0,1) --male
@@ -191,36 +191,36 @@ local function UpdateIcons(f, plate, unitID)
 							iconGender:SetTexCoord(1,0.5,0,1) --female
 							dontHide = true
 						end
-						
+
 						if dontHide then
 							iconGender:Show()
 						end
 					end
-					
+
 				end
 
 			end
-			
+
 		end
-		
+
 	end
-	
+
 	if not dontHide and iconGender then
 		iconGender:Hide()
 	end
-	
+
 	--GENDER TEXT
 	dontHide = false
-	
+
 	if genderLabel and XanUIDB.showGenderText and UnitName(unitID) ~= UnitName("player") then
-	
+
 		local _, race = UnitRace(unitID)
 		local sexID = UnitSex(unitID)
-		
+
 		if race and sexID and genders[sexID] then
-		
+
 			if not XanUIDB.onlyDracthyr or (XanUIDB.onlyDracthyr and race:lower() == "dracthyr") then
-				
+
 				local getName = UnitName(unitID)
 				local r, g, b = GetUnitColor(unitID)
 
@@ -242,7 +242,7 @@ local function UpdateIcons(f, plate, unitID)
 						dontHide = true
 					end
 				end
-				
+
 			end
 		end
 
@@ -250,12 +250,12 @@ local function UpdateIcons(f, plate, unitID)
 	if not dontHide and genderLabel then
 		genderLabel:Hide()
 	end
-	
+
 end
- 
+
 function moduleFrame:UpdateAllIcons()
 	if not npHooks then return end
-	
+
 	for plate, f in pairs(npHooks:GetActiveNameplates()) do
 		UpdateIcons(f, plate, f._unitID)
 	end
@@ -265,7 +265,7 @@ function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 	local iconRace = f[iconKey]
 	local iconGender = f[iconKeyGender]
 	local genderLabel = f[iconKeyGenderLabel]
-	
+
 	if not iconRace then
 		iconRace = f:CreateTexture(nil, "OVERLAY")
 		f[iconKey] = iconRace
@@ -305,19 +305,19 @@ end
 
 function moduleFrame:UNIT_NAME_UPDATE(event, unitID)
 	if not npHooks then return end
-	
+
 	local plate, f = npHooks:GetPlateForUnit(unitID)
 	UpdateIcons(f, plate, unitID)
 end
 
 local function EnableRaceGenderPlates()
 	if not addon.IsRetail then return end
-	
+
 	moduleFrame:RegisterEvent("PLAYER_ENTERING_WORLD", moduleFrame.UpdateAllIcons)
 	moduleFrame:RegisterMessage('XANUI_ON_NEWPLATE')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATESHOW')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATEHIDE')
-	
+
 	--check for nameplate name updates
 	moduleFrame:RegisterEvent("UNIT_NAME_UPDATE")
 end

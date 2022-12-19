@@ -36,7 +36,7 @@ end
 function XanUI_SlashCommand(cmd)
 
 	local a,b,c=strfind(cmd, "(%S+)"); --contiguous string of non-space characters
-	
+
 	if a then
 		if c and c:lower() == "showrace" then
 			if XanUIDB.showRaceIcon then
@@ -93,35 +93,51 @@ function XanUI_SlashCommand(cmd)
 	DEFAULT_CHAT_FRAME:AddMessage("/xanui showquests - Toggles showing quest icons.")
 end
 
+function addon:OpenBankBags()
+	local min, max
+
+	if addon.IsRetail then
+		min, max =  NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + NUM_BANKBAGSLOTS
+	else
+		min, max =  NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
+	end
+
+	if min and max then
+		for i = min, max do
+			OpenBag(i)
+		end
+	end
+end
+
 function addon:EnableAddon()
 
 	if not XanUIDB then XanUIDB = {} end
-	
+
 	if XanUIDB.showRaceIcon == nil then XanUIDB.showRaceIcon = false end
 	if XanUIDB.showGenderIcon == nil then XanUIDB.showGenderIcon = false end
 	if XanUIDB.showGenderText == nil then XanUIDB.showGenderText = true end
 	if XanUIDB.onlyDracthyr == nil then XanUIDB.onlyDracthyr = true end
 	if XanUIDB.showQuests == nil then XanUIDB.showQuests = true end
-	
+
 	local ver = GetAddOnMetadata("xanUI","Version") or 0
-		
-	
+
+
 	if addon.IsRetail then
-	
+
 		-- Always show missing transmogs in tooltips
 		C_CVar.SetCVar("missingTransmogSourceInItemTooltips", "1")
 
 		--mute ban-lu monk mount
 		MuteSoundFile(1593212)
 		MuteSoundFile(1593212)
-		MuteSoundFile(1593213)	
-		MuteSoundFile(1593214)	
-		MuteSoundFile(1593215)	
+		MuteSoundFile(1593213)
+		MuteSoundFile(1593214)
+		MuteSoundFile(1593215)
 		MuteSoundFile(1593216)
-		MuteSoundFile(1593217)	
+		MuteSoundFile(1593217)
 		MuteSoundFile(1593218)
 		MuteSoundFile(1593219)
-		MuteSoundFile(1593220)	
+		MuteSoundFile(1593220)
 		MuteSoundFile(1593221)
 		MuteSoundFile(1593222)
 		MuteSoundFile(1593223)
@@ -129,10 +145,10 @@ function addon:EnableAddon()
 		MuteSoundFile(1593225)
 		MuteSoundFile(1593226)
 		MuteSoundFile(1593227)
-		MuteSoundFile(1593228)	
+		MuteSoundFile(1593228)
 		MuteSoundFile(1593229)
 		MuteSoundFile(1593236)
-		
+
 		--disable stupid interupt/fizzle global cooldown sounds when casting
 		--REALLY annoying especially when playing Arcane Mage
 		local sounds = {
@@ -147,10 +163,10 @@ function addon:EnableAddon()
 		for _, fdid in pairs(sounds) do
 			MuteSoundFile(fdid)
 		end
-		
+
 		--mute Chordy from shadowlands
 		--MuteSoundFile(3719073)  --Lets find shinies
-		
+
 		--Hostile, Quest, and Interactive NPCs:
 		C_CVar.SetCVar("UnitNameFriendlySpecialNPCName", "1")
 		C_CVar.SetCVar("UnitNameHostleNPC", "1")
@@ -158,7 +174,7 @@ function addon:EnableAddon()
 		C_CVar.SetCVar("ShowQuestUnitCircles", "1")
 
 	end
-	
+
 	--force Numeric for healthbar fix
 	C_CVar.SetCVar("statusText","1")
 	C_CVar.SetCVar("statusTextDisplay","NUMERIC")
@@ -173,6 +189,22 @@ function addon:EnableAddon()
 	C_CVar.SetCVar("UnitNameEnemyPlayerName", "1")
 	C_CVar.SetCVar("UnitNameEnemyMinionName", "1")
 
+	--OPEN ALL BAGS AT BANK
+	----------------------
+	if C_PlayerInteractionManager then
+		local InteractType = Enum.PlayerInteractionType
+		addon:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW", function(event, winArg)
+			if winArg == InteractType.Banker then
+				addon:OpenBankBags()
+			end
+		end)
+	else
+		Unit:RegisterEvent('BANKFRAME_OPENED', function()
+			addon:OpenBankBags()
+		end)
+	end
+	----------------------
+
 	--NOW LOAD ALL THE MODULES
 	for i=1, #addon.moduleFuncs do
 		if addon.moduleFuncs[i].func then
@@ -183,6 +215,6 @@ function addon:EnableAddon()
 	SLASH_XANUI1 = "/xui";
 	SLASH_XANUI2 = "/xanui";
 	SlashCmdList["XANUI"] = XanUI_SlashCommand;
-	
+
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
 end

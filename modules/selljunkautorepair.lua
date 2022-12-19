@@ -55,13 +55,13 @@ function moduleFrame:StopSellingTimer(endedEarly)
 
 	if moduleFrame.moneyCount > 0 then
 		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..moduleFrame.itemCount.."> Total grey items vendored. ["..GetCoinTextureString(moduleFrame.moneyCount).."]")
-	end		
+	end
 end
 
 local function GetBagSlots(bagType)
 	if bagType == "bag" then
 		if IsRetail then
-			return BACKPACK_CONTAINER, NUM_TOTAL_EQUIPPED_BAG_SLOTS 
+			return BACKPACK_CONTAINER, NUM_TOTAL_EQUIPPED_BAG_SLOTS
 		else
 			return BACKPACK_CONTAINER, BACKPACK_CONTAINER + NUM_BAG_SLOTS
 		end
@@ -83,26 +83,26 @@ function moduleFrame:MERCHANT_SHOW()
 	moduleFrame.GreyLootList = {}
 	moduleFrame.totalSlots = 0
 	moduleFrame.sellIndexCount = 0
-	
+
 	local xGetNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
 	local xGetContainerInfo = (C_Container and C_Container.GetContainerItemInfo) or GetContainerItemInfo
 	local xGetContainerItemDurability = (C_Container and C_Container.GetContainerItemDurability) or GetContainerItemDurability
 	local xGetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
 	local xUseContainerItem = (C_Container and C_Container.UseContainerItem) or UseContainerItem
-	
+
 	local minCnt, maxCnt = GetBagSlots("bag")
-	
+
 	-- gather info
 	for bag = minCnt, maxCnt do
 		for slot = 1, xGetNumSlots(bag) do
 			local itemID = xGetContainerItemID(bag, slot)
-			
+
 			if itemID and not ignoreList[itemID] then
-				
+
 				local stackCount, quality, itemLink, noValue
-				
+
 				if IsRetail then
-				
+
 					local containerInfo = xGetContainerInfo(bag, slot)
 					if containerInfo and containerInfo.quality and containerInfo.quality == 0 and not containerInfo.hasNoValue then
 						local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
@@ -124,46 +124,46 @@ function moduleFrame:MERCHANT_SHOW()
 						end
 					end
 				end
-				
+
 			end
 			moduleFrame.totalSlots = moduleFrame.totalSlots + 1
 		end
 	end
-	
+
 	--do the timer for selling, only if we have something to work with
 	if #moduleFrame.GreyLootList > 0 and not moduleFrame.sellGreyTimer then
 		moduleFrame.sellGreyTimer = LibAceTimer:ScheduleRepeatingTimer(function()
-			
+
 			--if they closed early then send a warning
 			if not MerchantFrame:IsVisible() then moduleFrame:StopSellingTimer(true) end
-			
+
 			--if our attempts are more than wants on the list or more than our total amount of slots then exit
 			if moduleFrame.sellIndexCount > #moduleFrame.GreyLootList or moduleFrame.sellIndexCount >= moduleFrame.totalSlots or moduleFrame.sellIndexCount > 2000 then
 				moduleFrame:StopSellingTimer()
 				return
 			end
-			
+
 			moduleFrame.sellIndexCount = moduleFrame.sellIndexCount + 1
-			
+
 			--grab the next entry in our table
 			if moduleFrame.GreyLootList[moduleFrame.sellIndexCount] then
-			
+
 				local index = moduleFrame.sellIndexCount
 				--print(index, moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot, moduleFrame.GreyLootList[index].itemID, moduleFrame.GreyLootList[index].stackCount, moduleFrame.GreyLootList[index].stackPrice, moduleFrame.GreyLootList[index].itemSellPrice)
-				
+
 				moduleFrame.moneyCount = moduleFrame.moneyCount + moduleFrame.GreyLootList[index].stackPrice
 				moduleFrame.itemCount = moduleFrame.itemCount + 1
-				
+
 				--print(moduleFrame.itemCount , moduleFrame.moneyCount)
-				xUseContainerItem(moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot)	
+				xUseContainerItem(moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot)
 			else
 				--we don't have another index so exit the timer
 				moduleFrame:StopSellingTimer()
 			end
-		
+
 		end, 0.15)
 	end
-	
+
 	--do repairs
 	if CanMerchantRepair() then
 		local repairCost, canRepair = GetRepairAllCost()

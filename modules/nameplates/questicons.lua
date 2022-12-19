@@ -12,7 +12,7 @@ LibStub("AceEvent-3.0"):Embed(moduleFrame)
 
 local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "QuestIcon"
-local ICON_PATH = "Interface\\AddOns\\"..ADDON_NAME.."\\media\\questicon_1"
+local ICON_PATH = "Interface\\AddOns\\"..ADDON_NAME.."\\media\\quest4"
 
 moduleFrame.QuestByTitle = {}
 moduleFrame.QuestByID = {}
@@ -96,7 +96,7 @@ local function DoQuestLogCache(byPassUpdate)
 	for questIndex = 1, C_QuestLog.GetNumQuestLogEntries() do
 		CacheQuest(questIndex)
 	end
-	
+
 	if not byPassUpdate then
 		moduleFrame:UpdateAllQuestIcons("DoQuestLogCache")
 	end
@@ -131,7 +131,7 @@ end
 local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	if not f or not plate then return end
 	if not XanUIDB then return end
-	
+
 	local iconQuest = f[iconKey]
 	Debug("------------------")
 	Debug("UpdateQuestIcon", unitID)
@@ -140,18 +140,18 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	if not iconQuest then
 		iconQuest = f:CreateTexture(nil, "OVERLAY")
 		f[iconKey] = iconQuest
-		iconQuest:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1")
+		iconQuest:SetTexture(ICON_PATH)
 		iconQuest:SetSize(16, 32)
 		iconQuest:SetPoint("BOTTOM", f, "TOP")
 		iconQuest:Hide()
 	end
-	
+
 	--don't do these things when in a BattlePet battle
 	if C_PetBattles.IsInBattle() then
 		iconQuest:Hide()
 		return
 	end
-	
+
 	--check tooltipData
 	if not tooltipData then
 		tooltipData = C_TooltipInfo.GetUnit(unitID)
@@ -162,7 +162,7 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	end
 
 	TooltipUtil.SurfaceArgs(tooltipData)
-	
+
 	local questType = 0
 	local objCache = {}
 	local questIDCache = {}
@@ -176,12 +176,12 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 
 	--parse the tooltip data
 	if tooltipData and tooltipData.lines then
-		
+
 		for i = 3, #tooltipData.lines do
 
 			local line = tooltipData.lines[i]
 			TooltipUtil.SurfaceArgs(line)
-			
+
 			if line then
 				local text = line.leftText
 
@@ -193,12 +193,12 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 
 						if C_QuestLog.IsWorldQuest(questID) then
 							questType = 2 --world quest
-							
+
 							local progress = C_TaskQuest.GetQuestProgressBarInfo(questID)
 							if progress then
 								questType = 3 -- progress bar world type quest
 							end
-							
+
 						else
 							if C_QuestLog.IsQuestTask(questID) then
 								questType = 4 -- it's a Bonus Objective
@@ -210,7 +210,7 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 						table.insert(questIDCache, tostring(isDone))
 						Debug("UpdateQuestIcon", "TooltipData", text, questID, isDone, questType, #questIDCache)
 					end
-				
+
 				elseif text and scenarioName and text == scenarioName then
 					questType = 4 -- it's a Scenario quest (bonus objective)
 					table.insert(questIDCache, tostring(false))
@@ -230,16 +230,16 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 						Debug("UpdateQuestIcon", "ScanObjective", obj, #objCache)
 					end
 				end
-				
+
 			end
-			
+
 		end
 
 	end
-	
+
 	--if we have something to work with and the first entry is still false, then the objective for quest or mob isn't done yet
 	--make sure to convert the value boolean to string for comparison
-	
+
 	--make sure the false is on the top, make sure to convert the booleans to strings
 	table.sort(objCache, function(a, b)
 		return tostring(a) < tostring(b);
@@ -299,10 +299,10 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 			--something went wrong and the quest didn't get a questType and it isn't completed, show it as a rose red color
 			iconQuest:SetVertexColor(1, 60/255, 56/255, 0.9) --rose color
 		end
-		
+
 		iconQuest:Show()
 		return --return so not to Hide below
-		
+
 	end
 
 	iconQuest:Hide()
@@ -311,7 +311,7 @@ end
 local function OnTooltipSetUnit(tooltip, tooltipData)
 	if not npHooks then return end
 	if not tooltipData or not tooltipData.guid then return end
-	
+
 	local plate, f = npHooks:GetPlateForGUID(tooltipData.guid)
 	if f and f._unitID then
 		UpdateQuestIcon(f, plate, f._unitID, tooltipData)
@@ -344,7 +344,7 @@ function moduleFrame:QUEST_LOG_UPDATE()
 			end
 			moduleFrame.QuestsToUpdate[questID] = nil
 		end
-		
+
 		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate")
 
 		moduleFrame:UpdateAllQuestIcons("QUEST_LOG_UPDATE")
@@ -428,7 +428,7 @@ function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 	if not iconQuest then
 		iconQuest = f:CreateTexture(nil, "OVERLAY")
 		f[iconKey] = iconQuest
-		iconQuest:SetTexture("Interface\\AddOns\\XanUI\\media\\questicon_1")
+		iconQuest:SetTexture(ICON_PATH)
 		iconQuest:SetSize(16, 32)
 		iconQuest:SetPoint("BOTTOM", f, "TOP")
 		iconQuest:Hide()
@@ -476,7 +476,7 @@ local function EnableQuestIcons()
 	moduleFrame:RegisterMessage('XANUI_ON_NEWPLATE')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATESHOW')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATEHIDE')
-	
+
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
 end
 

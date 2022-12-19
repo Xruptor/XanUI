@@ -20,12 +20,12 @@ local lastText = "?"
 
 local function EnableFilterTalkingHeads()
 	if not addon.IsRetail then return end
-	
+
 	hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function(self)
 
 		--https://github.com/tomrus88/BlizzardInterfaceCode/blob/c8c436d8b47a53472bee62c9af06dea1cb50f868/Interface/FrameXML/TalkingHeadUI.lua
 		local displayInfo, cameraID, vo, duration, lineNumber, numLines, name, text, isNewTalkingHead = C_TalkingHead.GetCurrentLineInfo()
-		
+
 		local inInstance, instanceType = IsInInstance()
 
 		--only do the filtering in dungeons or instances, in outside world for quests, allow it

@@ -478,6 +478,8 @@ local function EnableQuestIcons()
 	moduleFrame:RegisterMessage('XANUI_ON_PLATEHIDE')
 
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
+
+	C_Timer.After(10, DoQuestLogCache)
 end
 
 --add to our module loader

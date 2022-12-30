@@ -15,8 +15,6 @@ LibStub("AceEvent-3.0"):Embed(moduleFrame)
 ----------------------------------------------------------------
 
 local talkingHeadDB = {}
-local lastTalkingVO = 0
-local lastText = "?"
 
 local function EnableFilterTalkingHeads()
 	if not addon.IsRetail then return end
@@ -34,11 +32,7 @@ local function EnableFilterTalkingHeads()
 				talkingHeadDB[vo] = true
 			else
 				--don't spam the notice
-				if lastTalkingVO ~= vo or lastText ~= text then
-					DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
-					lastTalkingVO = vo
-					lastText = text
-				end
+				DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
 				self:CloseImmediately()
 			end
 		end

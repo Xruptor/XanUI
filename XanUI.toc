@@ -19,3 +19,4 @@ modules\nameplates\questicons.lua
 modules\addmissingstats.lua
 modules\selljunkautorepair.lua
 modules\filtertalkingheads.lua
+modules\missionmenu.lua

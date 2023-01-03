@@ -67,32 +67,36 @@ local function MM_CreateMenu()
 			["id"] = LE_EXPANSION_WARLORDS_OF_DRAENOR,
 			["name"] = EXPANSION_NAME5,
 			["banner"] = "accountupgradebanner-wod",
-			["garrisonTypeID"] = Enum.GarrisonType.Type_6_0,
+			["garrisonTypeID"] = Enum.GarrisonType.Type_6_0, --2
 			["minimapIcon"] = string.format("GarrLanding-MinimapIcon-%s-Up", playerInfo.factionGroup),
+			["landingPageType"] = 1, --use 1 for the older landingpages and 2 for the newer dragonflight ones
 		},
 		["Legion"] = {
 			["key"] = "Legion",
 			["id"] = LE_EXPANSION_LEGION,
 			["name"] = EXPANSION_NAME6,
 			["banner"] = "accountupgradebanner-legion",
-			["garrisonTypeID"] = Enum.GarrisonType.Type_7_0,
+			["garrisonTypeID"] = Enum.GarrisonType.Type_7_0, --3
 			["minimapIcon"] = string.format("legionmission-landingbutton-%s-up", classIconName),
+			["landingPageType"] = 1,
 		},
 		["BattleForAzeroth"] = {
 			["key"] = "BattleForAzeroth",
 			["id"] = LE_EXPANSION_BATTLE_FOR_AZEROTH,
 			["name"] = EXPANSION_NAME7,
 			["banner"] = "accountupgradebanner-bfa",
-			["garrisonTypeID"] = Enum.GarrisonType.Type_8_0,
+			["garrisonTypeID"] = Enum.GarrisonType.Type_8_0, --9
 			["minimapIcon"] = string.format("bfa-landingbutton-%s-up", playerInfo.factionGroup),
+			["landingPageType"] = 1,
 		},
 		["Shadowlands"] = {
 			["key"] = "Shadowlands",
 			["id"] = LE_EXPANSION_SHADOWLANDS,
 			["name"] = EXPANSION_NAME8,
 			["banner"] = "accountupgradebanner-shadowlands",
-			["garrisonTypeID"] = Enum.GarrisonType.Type_9_0,
+			["garrisonTypeID"] = Enum.GarrisonType.Type_9_0, --111
 			["minimapIcon"] = string.format("shadowlands-landingbutton-%s-up", playerInfo.covenantTex),
+			["landingPageType"] = 1,
 		},
 		["Dragonflight"] = {
 			["key"] = "Dragonflight",
@@ -101,6 +105,7 @@ local function MM_CreateMenu()
 			["banner"] = "accountupgradebanner-dragonflight",
 			["garrisonTypeID"] = Enum.ExpansionLandingPageType.Dragonflight,
 			["minimapIcon"] = "dragonflight-landingbutton-up",
+			["landingPageType"] = 2,
 		},
 	}
 
@@ -112,8 +117,7 @@ local function MM_CreateMenu()
 	end)
 
 	local function openMissionPage(expansion)
-		--as long as the expansion isn't Dragonflight
-		if (expansion.garrisonTypeID ~= Enum.ExpansionLandingPageType.Dragonflight) then
+		if expansion.landingPageType == 1 then
 			if (ExpansionLandingPage and ExpansionLandingPage:IsShown()) then
 				HideUIPanel(ExpansionLandingPage)
 			end
@@ -139,9 +143,28 @@ local function MM_CreateMenu()
 			for _, expansion in ipairs(xpacTable) do
 				local garrTypeID = expansion.garrisonTypeID
 				if garrTypeID then
-					addButton(level, expansion.name, nil, 1, nil, expansion.key, function(frame, ...)
-						openMissionPage(expansion)
-					end, expansion.minimapIcon)
+
+					local passChk = false
+
+					if expansion.landingPageType == 1 then
+						--for shadowlands make sure we have a covenant
+						if garrTypeID == Enum.GarrisonType.Type_9_0 then
+							if covenantData then passChk = true end
+						else
+							if C_Garrison.HasGarrison(garrTypeID) then passChk = true end
+						end
+					else
+						if garrTypeID == Enum.ExpansionLandingPageType.Dragonflight and C_PlayerInfo.IsExpansionLandingPageUnlockedForPlayer(LE_EXPANSION_DRAGONFLIGHT) then
+							passChk = true
+						end
+					end
+
+					if passChk then
+						addButton(level, expansion.name, nil, 1, nil, expansion.key, function(frame, ...)
+							openMissionPage(expansion)
+						end, expansion.minimapIcon)
+					end
+
 				end
 			end
 

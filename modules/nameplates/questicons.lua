@@ -64,6 +64,9 @@ local function CacheQuest(questIndex, questID)
 		Debug("CacheQuest", "C_TaskQuest", questID, questName)
 	elseif questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
+		if not questID then
+			questID = C_QuestLog.GetQuestIDForLogIndex(questIndex)
+		end
 		if qInfo then
 			--isBounty is the world map bounty quests. also known as daily emissary quests
 			--lets not record those, they are hidden anyways
@@ -74,7 +77,9 @@ local function CacheQuest(questIndex, questID)
 			end
 		else
 			--we need to grab the quest info when it's sent back from the server
-			moduleFrame.QuestByID[questID] = "UpdatePending"
+			if questID then
+				moduleFrame.QuestByID[questID] = "UpdatePending"
+			end
 		end
 	end
 end
@@ -365,7 +370,7 @@ function moduleFrame:QUEST_ACCEPTED(event, questID)
 
 	CacheQuestByQuestID(questID)
 	if moduleFrame.QuestByID[questID] == "UpdatePending" then
-		C_QuestLog.RequestLoadmoduleFrame.QuestByID(questID)
+		C_QuestLog.RequestLoadQuestByID(questID)
 	end
 	--possibly need to update icons when a quest is accepted, need to see if triggers QUEST_LOG_UPDATE
 end
@@ -385,7 +390,7 @@ function moduleFrame:QUEST_REMOVED(event, questID)
 end
 
 function moduleFrame:QUEST_DATA_LOAD_RESULT(event, questID, success)
-	--this event is triggered when we request a quest update from the server using RequestLoadmoduleFrame.QuestByID
+	--this event is triggered when we request a quest update from the server using C_QuestLog.RequestLoadQuestByID
 	if success and moduleFrame.QuestByID[questID] == "UpdatePending" then
 		CacheQuestByQuestID(questID)
 		moduleFrame:UpdateAllQuestIcons("QUEST_DATA_LOAD_RESULT")

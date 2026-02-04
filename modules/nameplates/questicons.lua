@@ -1,8 +1,9 @@
 local ADDON_NAME, private = ...
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "questicons"
 
@@ -26,13 +27,11 @@ local function Debug(...)
     if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
 end
 
-local function GetHashTableLen(tbl)
-	local count = 0
-	for _, __ in pairs(tbl) do
-		count = count + 1
-	end
-	return count
-end
+local C_QuestLog = C_QuestLog
+local C_TaskQuest = C_TaskQuest
+local C_TooltipInfo = C_TooltipInfo
+local C_Scenario = C_Scenario
+local C_PetBattles = C_PetBattles
 
 ----------------------------------------------
 ----- QUEST API
@@ -109,7 +108,7 @@ end
 
 local function ScanObjective(line)
 
-    local x, y = line:match('(%d+)/(%d+)')
+    local x, y = line:match("(%d+)/(%d+)")
     x, y = tonumber(x), tonumber(y)
 
     if x and y then
@@ -120,7 +119,7 @@ local function ScanObjective(line)
 			return true
         end
     else
-        x = line:match('%((%d+)%%%)')
+        x = line:match("%((%d+)%%%)")
         x = tonumber(x)
 
 		--it's a power object, if 100 or greater then it's complete, otherwise false
@@ -136,6 +135,13 @@ end
 local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	if not f or not plate then return end
 	if not XanUIDB then return end
+	if not XanUIDB.showQuests then
+		local iconQuest = f[iconKey]
+		if iconQuest then
+			iconQuest:Hide()
+		end
+		return
+	end
 
 	local iconQuest = f[iconKey]
 	Debug("------------------")
@@ -167,9 +173,13 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	end
 
 	local questType = 0
-	local objCache = {}
-	local questIDCache = {}
+	local questTypePriority = 0
+	local hasObjective = false
+	local hasIncompleteObjective = false
+	local hasQuest = false
+	local hasIncompleteQuest = false
 	local scenarioName
+	local questByTitle = moduleFrame.QuestByTitle
 
 	--sometimes we are in a scenario that isn't exactly a task quest or treated as an bonus objective.  Example:  Dragonflight -> Grand Hunts
 	--so we need to grab the scenario name to check for that if available
@@ -188,36 +198,60 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 			if line then
 				local text = line.leftText
 
-				if text and moduleFrame.QuestByTitle[text] then
-					local questID = moduleFrame.QuestByTitle[text]
+				if text and questByTitle[text] then
+					local questID = questByTitle[text]
 
 					if questID then
 						local isDone = isQuestComplete(nil, questID)
+						hasQuest = true
+						if not isDone then
+							hasIncompleteQuest = true
+						end
 
+						local qType = 0
 						if C_QuestLog.IsWorldQuest(questID) then
-							questType = 2 --world quest
+							qType = 2 --world quest
 
 							local progress = C_TaskQuest.GetQuestProgressBarInfo(questID)
 							if progress then
-								questType = 3 -- progress bar world type quest
+								qType = 3 -- progress bar world type quest
 							end
 
 						else
 							if C_QuestLog.IsQuestTask(questID) then
-								questType = 4 -- it's a Bonus Objective
+								qType = 4 -- it's a Bonus Objective
 							else
-								questType = 1 --regular quest
+								qType = 1 --regular quest
 							end
 						end
 
-						table.insert(questIDCache, tostring(isDone))
-						Debug("UpdateQuestIcon", "TooltipData", text, questID, isDone, questType, #questIDCache)
+						local priority = 1
+						if qType == 2 or qType == 3 then
+							priority = 3 --world quest (progress bar or standard)
+						elseif qType == 4 then
+							priority = 2 --bonus/scenario
+						else
+							priority = 1 --regular
+						end
+
+						if not isDone then
+							--prefer higher priority when multiple incomplete quest titles are present
+							if priority >= questTypePriority then
+								questType = qType
+								questTypePriority = priority
+							end
+						elseif questType == 0 and questTypePriority == 0 then
+							questType = qType
+						end
+
+						Debug("UpdateQuestIcon", "TooltipData", text, questID, isDone, questType)
 					end
 
 				elseif text and scenarioName and text == scenarioName then
 					questType = 4 -- it's a Scenario quest (bonus objective)
-					table.insert(questIDCache, tostring(false))
-					Debug("UpdateQuestIcon", "scenarioName", scenarioName, questType, #questIDCache)
+					hasQuest = true
+					hasIncompleteQuest = true
+					Debug("UpdateQuestIcon", "scenarioName", scenarioName, questType)
 				else
 					--okay so technically speaking we could have scanned each objective using code instead of scanning the tooltip.
 					--the problem is that although an objective can be marked as uncompleted, it may not exactly apply to the current unit being parsed.
@@ -228,9 +262,12 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 
 					--we have something to work with
 					if obj ~= nil then
+						hasObjective = true
+						if not obj then
+							hasIncompleteObjective = true
+						end
 						--if any of the objectives are incomplete then mark it as not done
-						table.insert(objCache, tostring(obj))
-						Debug("UpdateQuestIcon", "ScanObjective", obj, #objCache)
+						Debug("UpdateQuestIcon", "ScanObjective", obj)
 					end
 				end
 
@@ -243,40 +280,32 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	--if we have something to work with and the first entry is still false, then the objective for quest or mob isn't done yet
 	--make sure to convert the value boolean to string for comparison
 
-	--make sure the false is on the top, make sure to convert the booleans to strings
-	table.sort(objCache, function(a, b)
-		return tostring(a) < tostring(b);
-	end)
-	table.sort(questIDCache, function(a, b)
-		return tostring(a) < tostring(b);
-	end)
-
-	Debug("UpdateQuestIcon", "Totals", #objCache, #questIDCache)
+	Debug("UpdateQuestIcon", "Totals", hasObjective, hasQuest, hasIncompleteObjective, hasIncompleteQuest)
 
 	local doIcon = false
 
 	--if we do have objectives and at least one is uncomplete, then process
-	if #objCache > 0 and tostring(objCache[1]) == "false" then
+	if hasObjective and hasIncompleteObjective then
 
 		local partyChk = 0
 
 		--if we don't have any quest found, it's probably a party members quest.
-		if #questIDCache < 1 or questType == 0 then
+		if not hasQuest or questType == 0 then
 			questType = 5 --set to party member, fel green color
 			partyChk = 1
 		--if all quests are completed and we still have uncompleted objectives, chances are its a party members quests
-		elseif tostring(questIDCache[1]) == "true" then
+		elseif hasQuest and not hasIncompleteQuest then
 			questType = 5 --set to party member, fel green color
 			partyChk = 2
 		end
 
 		doIcon = true
-		Debug("UpdateQuestIcon", "Chk1", #objCache, #questIDCache, questType, partyChk)
+		Debug("UpdateQuestIcon", "Chk1", questType, partyChk)
 
 	--if we don't have objectives but at least one of our quests isn't completed, then show the icon anyways
-	elseif #objCache < 1 and #questIDCache > 0 and tostring(questIDCache[1]) == "false"  then
+	elseif not hasObjective and hasQuest and hasIncompleteQuest then
 		doIcon = true
-		Debug("UpdateQuestIcon", "Chk2", #objCache, #questIDCache)
+		Debug("UpdateQuestIcon", "Chk2")
 	end
 
 	--only check the questIDCache if we don't have any returns on the objectives cache
@@ -323,6 +352,15 @@ end
 
 function moduleFrame:UpdateAllQuestIcons(trigger)
 	if not npHooks then return end
+	if not XanUIDB or not XanUIDB.showQuests then
+		for _, f in pairs(npHooks:GetActiveNameplates()) do
+			local iconQuest = f[iconKey]
+			if iconQuest then
+				iconQuest:Hide()
+			end
+		end
+		return
+	end
 	Debug("UpdateAllQuestIcons", trigger)
 
 	for plate, f in pairs(npHooks:GetActiveNameplates()) do
@@ -335,10 +373,17 @@ end
 ----------------------------------------------
 
 function moduleFrame:QUEST_LOG_UPDATE()
-	local numCount = GetHashTableLen(moduleFrame.QuestsToUpdate)
+	if moduleFrame.questLogUpdatePending then return end
+	moduleFrame.questLogUpdatePending = true
+	C_Timer.After(0.1, function()
+		moduleFrame.questLogUpdatePending = nil
+		moduleFrame:HandleQuestLogUpdate()
+	end)
+end
 
-	if numCount > 0 then
-		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate", numCount)
+function moduleFrame:HandleQuestLogUpdate()
+	if next(moduleFrame.QuestsToUpdate) ~= nil then
+		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate")
 
 		for questID, qTitle in pairs(moduleFrame.QuestsToUpdate) do
 			local tmpID = moduleFrame.QuestByTitle[qTitle]
@@ -353,6 +398,14 @@ function moduleFrame:QUEST_LOG_UPDATE()
 		moduleFrame:UpdateAllQuestIcons("QUEST_LOG_UPDATE")
 		return
 	end
+
+	--lightweight refresh: update cached quest IDs without a full log scan
+	for questID, qTitle in pairs(moduleFrame.QuestByID) do
+		if questID ~= "UpdatePending" then
+			CacheQuestByQuestID(questID)
+		end
+	end
+	moduleFrame:UpdateAllQuestIcons("QUEST_LOG_UPDATE_LIGHT")
 
 	--we don't want to spam the grabbing of all the quests every time a quest is updated.
 	--instead we only want to update those individual quests that were updated.  If we were to spam the full quest log constantly each time, it would cause lag
@@ -416,6 +469,18 @@ function moduleFrame:UNIT_QUEST_LOG_CHANGED(event, unitID)
 	end
 end
 
+function moduleFrame:QUEST_TURNED_IN(event, questID)
+	Debug("QUEST_TURNED_IN", questID)
+	CacheQuestByQuestID(questID)
+	moduleFrame:UpdateAllQuestIcons("QUEST_TURNED_IN")
+end
+
+function moduleFrame:QUEST_COMPLETED(event, questID)
+	Debug("QUEST_COMPLETED", questID)
+	CacheQuestByQuestID(questID)
+	moduleFrame:UpdateAllQuestIcons("QUEST_COMPLETED")
+end
+
 function moduleFrame:UI_SCALE_CHANGED()
 	Debug("UI_SCALE_CHANGED")
 	DoQuestLogCache()
@@ -445,8 +510,8 @@ end
 function moduleFrame:XANUI_ON_PLATEHIDE(event, f, plate, unitID)
 	local iconQuest = f[iconKey]
 
-	if f[iconQuest] then
-		f[iconQuest]:Hide()
+	if iconQuest then
+		iconQuest:Hide()
 	end
 end
 
@@ -459,6 +524,8 @@ local function EnableQuestIcons()
 
 	moduleFrame:RegisterEvent("QUEST_ACCEPTED")
 	moduleFrame:RegisterEvent("QUEST_REMOVED")
+	moduleFrame:RegisterEvent("QUEST_TURNED_IN")
+	moduleFrame:RegisterEvent("QUEST_COMPLETED")
 	moduleFrame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
 	moduleFrame:RegisterEvent("QUEST_WATCH_UPDATE")
 	moduleFrame:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
@@ -480,7 +547,9 @@ local function EnableQuestIcons()
 	moduleFrame:RegisterMessage('XANUI_ON_PLATESHOW')
 	moduleFrame:RegisterMessage('XANUI_ON_PLATEHIDE')
 
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
+	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
+		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
+	end
 
 	C_Timer.After(10, DoQuestLogCache)
 end

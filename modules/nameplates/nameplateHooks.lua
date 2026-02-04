@@ -1,8 +1,9 @@
 local ADDON_NAME, private = ...
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "nameplateHooks"
 
@@ -14,14 +15,17 @@ local Nameplates = {}
 local ActiveNameplates = {}
 local GUIDs = {}
 
+local IsInInstance = IsInInstance
+local IsArena = (C_PvP and C_PvP.IsArena) or function() return false end
+
 local function CanAccessObject(obj)
 	if not obj then return false end
 	return issecure() or (obj.IsForbidden and not obj:IsForbidden()) or false
 end
 
 local function isObjSafe(obj, checkInstance)
-	local inInstance, instanceType = IsInInstance()
-	if C_PvP.IsArena() then return false end
+	local inInstance = IsInInstance()
+	if IsArena() then return false end
 	if checkInstance and inInstance then return false end --you can't modify plates while in instances, it will cause errors and taint issues.
 	if not CanAccessObject(obj) then return false end --check if you can even touch the plate
 	return true

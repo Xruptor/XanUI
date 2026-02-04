@@ -9,10 +9,17 @@ if type(private) ~= "table" then
 end
 local L = private.L or setmetatable({}, { __index = function(_, key) return key end })
 
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+private.GetAddonFrame = private.GetAddonFrame or function(_, addonName)
+	local name = addonName or ADDON_NAME
+	local frame = _G[name]
+	if not frame then
+		frame = CreateFrame("Frame", name, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+		_G[name] = frame
+	end
+	return frame
 end
-local addon = _G[ADDON_NAME]
+
+local addon = private:GetAddonFrame(ADDON_NAME)
 addon.private = private
 addon.L = L
 
@@ -170,79 +177,76 @@ addon:EmbedEvents(addon)
 addon.IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 addon.moduleFuncs = {}
 
-local function OnEnable(event, arg1)
+local SetCVar = (C_CVar and C_CVar.SetCVar) or SetCVar
+local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+
+function addon:GetCoinString(amount)
+	local coinFn = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or GetCoinTextureString or GetCoinText
+	if not coinFn then
+		return tostring(amount or 0)
+	end
+	return coinFn(amount or 0)
+end
+
+function addon:OnEnable(event, arg1)
 	if event == "ADDON_LOADED" and arg1 and arg1 == ADDON_NAME then
-		addon:UnregisterEvent("ADDON_LOADED")
-		addon:RegisterEvent("PLAYER_LOGIN", OnEnable)
+		self:UnregisterEvent("ADDON_LOADED")
+		self:RegisterEvent("PLAYER_LOGIN")
 	elseif event == "PLAYER_LOGIN" then
-		addon:UnregisterEvent("PLAYER_LOGIN")
-		addon:EnableAddon()
+		self:UnregisterEvent("PLAYER_LOGIN")
+		self:EnableAddon()
 	end
 end
-addon:RegisterEvent("ADDON_LOADED", OnEnable)
+addon:RegisterEvent("ADDON_LOADED")
 
 function addon.CanAccessObject(obj)
 	return issecure() or not obj:IsForbidden();
 end
 
 function XanUI_SlashCommand(cmd)
+	local token = cmd and cmd:match("^(%S+)") or ""
+	token = token:lower()
 
-	local a,b,c=strfind(cmd, "(%S+)"); --contiguous string of non-space characters
-
-	if a then
-		if c and c:lower() == "showrace" then
-			if XanUIDB.showRaceIcon then
-				XanUIDB.showRaceIcon = false
-			else
-				XanUIDB.showRaceIcon = true
-			end
-			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showRaceIcon)))
-			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
-			return true
-		elseif c and c:lower() == "gendericon" then
-			if XanUIDB.showGenderIcon then
-				XanUIDB.showGenderIcon = false
-			else
-				XanUIDB.showGenderIcon = true
-			end
-			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showGenderIcon)))
-			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
-			return true
-		elseif c and c:lower() == "gendertext" then
-			if XanUIDB.showGenderText then
-				XanUIDB.showGenderText = false
-			else
-				XanUIDB.showGenderText = true
-			end
-			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showGenderText)))
-			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
-			return true
-		elseif c and c:lower() == "onlydrac" then
-			if XanUIDB.onlyDracthyr then
-				XanUIDB.onlyDracthyr = false
-			else
-				XanUIDB.onlyDracthyr = true
-			end
-			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.onlyDracthyr)))
-			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
-			return true
-		elseif c and c:lower() == "showquests" then
-			if XanUIDB.showQuests then
-				XanUIDB.showQuests = false
-			else
-				XanUIDB.showQuests = true
-			end
-			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showQuests)))
-			return true
+	local function updateRaceGender()
+		local mod = addon["racegenderplates"]
+		if mod and mod.UpdateAllIcons then
+			mod:UpdateAllIcons()
 		end
 	end
 
-	DEFAULT_CHAT_FRAME:AddMessage(ADDON_NAME, 64/255, 224/255, 208/255)
-	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui showrace - Toggles showing the race icon."])
-	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui gendericon - Toggles showing the gender icon."])
-	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui gendertext - Toggles showing the gender text."])
-	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only."])
-	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui showquests - Toggles showing quest icons."])
+	local toggles = {
+		showrace = { key = "showRaceIcon", msg = L.SlashShowRaceStatus, onChange = updateRaceGender },
+		gendericon = { key = "showGenderIcon", msg = L.SlashGenderIconStatus, onChange = updateRaceGender },
+		gendertext = { key = "showGenderText", msg = L.SlashGenderTextStatus, onChange = updateRaceGender },
+		onlydrac = { key = "onlyDracthyr", msg = L.SlashOnlyDracStatus, onChange = updateRaceGender },
+		showquests = {
+			key = "showQuests",
+			msg = L.SlashShowQuestsStatus,
+			onChange = function()
+				local mod = addon["questicons"]
+				if mod and mod.UpdateAllQuestIcons then
+					mod:UpdateAllQuestIcons("SlashToggle")
+				end
+			end,
+		},
+	}
+
+	local entry = toggles[token]
+	if entry then
+		XanUIDB[entry.key] = not XanUIDB[entry.key]
+		DEFAULT_CHAT_FRAME:AddMessage(string.format(entry.msg, tostring(XanUIDB[entry.key])))
+		if entry.onChange then
+			entry.onChange()
+		end
+		return true
+	end
+
+	DEFAULT_CHAT_FRAME:AddMessage(ADDON_NAME, 64 / 255, 224 / 255, 208 / 255)
+	DEFAULT_CHAT_FRAME:AddMessage(L.SlashHelpShowRace)
+	DEFAULT_CHAT_FRAME:AddMessage(L.SlashHelpGenderIcon)
+	DEFAULT_CHAT_FRAME:AddMessage(L.SlashHelpGenderText)
+	DEFAULT_CHAT_FRAME:AddMessage(L.SlashHelpOnlyDrac)
+	DEFAULT_CHAT_FRAME:AddMessage(L.SlashHelpShowQuests)
 end
 
 function addon:OpenBankBags()
@@ -261,23 +265,43 @@ function addon:OpenBankBags()
 	end
 end
 
+function addon:PLAYER_INTERACTION_MANAGER_FRAME_SHOW(event, winArg)
+	local interactType = Enum and Enum.PlayerInteractionType and Enum.PlayerInteractionType.Banker
+	if interactType and winArg == interactType then
+		self:OpenBankBags()
+	end
+end
+
+function addon:BANKFRAME_OPENED()
+	self:OpenBankBags()
+end
+
 function addon:EnableAddon()
 
 	if not XanUIDB then XanUIDB = {} end
 
-	if XanUIDB.showRaceIcon == nil then XanUIDB.showRaceIcon = false end
-	if XanUIDB.showGenderIcon == nil then XanUIDB.showGenderIcon = false end
-	if XanUIDB.showGenderText == nil then XanUIDB.showGenderText = true end
-	if XanUIDB.onlyDracthyr == nil then XanUIDB.onlyDracthyr = true end
-	if XanUIDB.showQuests == nil then XanUIDB.showQuests = true end
+	local defaults = {
+		showRaceIcon = false,
+		showGenderIcon = false,
+		showGenderText = true,
+		onlyDracthyr = true,
+		showQuests = true,
+	}
+	for key, value in pairs(defaults) do
+		if XanUIDB[key] == nil then
+			XanUIDB[key] = value
+		end
+	end
 
-	local ver = C_AddOns.GetAddOnMetadata("xanUI","Version") or 0
+	local ver = GetAddOnMetadata and GetAddOnMetadata("xanUI", "Version") or 0
 
 
 	if addon.IsRetail then
 
 		-- Always show missing transmogs in tooltips
-		C_CVar.SetCVar("missingTransmogSourceInItemTooltips", "1")
+		if SetCVar then
+			SetCVar("missingTransmogSourceInItemTooltips", "1")
+		end
 
 		--mute ban-lu monk mount
 		MuteSoundFile(1593212)
@@ -320,40 +344,37 @@ function addon:EnableAddon()
 		--MuteSoundFile(3719073)  --Lets find shinies
 
 		--Hostile, Quest, and Interactive NPCs:
-		C_CVar.SetCVar("UnitNameFriendlySpecialNPCName", "1")
-		C_CVar.SetCVar("UnitNameHostleNPC", "1")
-		C_CVar.SetCVar("UnitNameInteractiveNPC", "1")
-		C_CVar.SetCVar("ShowQuestUnitCircles", "1")
+		if SetCVar then
+			SetCVar("UnitNameFriendlySpecialNPCName", "1")
+			SetCVar("UnitNameHostleNPC", "1")
+			SetCVar("UnitNameInteractiveNPC", "1")
+			SetCVar("ShowQuestUnitCircles", "1")
+		end
 
 	end
 
 	--force Numeric for healthbar fix
-	C_CVar.SetCVar("statusText","1")
-	C_CVar.SetCVar("statusTextDisplay","NUMERIC")
-	C_CVar.SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
-	C_CVar.SetCVar("nameplateShowFriends", 1) -- show for friendly units
-	C_CVar.SetCVar("nameplateShowEnemies", 1) -- Enemy
-	C_CVar.SetCVar("nameplateShowEnemyMinus", 1) -- Enemy Minors
-	C_CVar.SetCVar("nameplateMaxDistance", 100) --default 60
-	C_CVar.SetCVar("UnitNameNPC", "0") --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
-	C_CVar.SetCVar("UnitNameFriendlyPlayerName", "1")
-	C_CVar.SetCVar("UnitNameFriendlyMinionName", "1")
-	C_CVar.SetCVar("UnitNameEnemyPlayerName", "1")
-	C_CVar.SetCVar("UnitNameEnemyMinionName", "1")
+	if SetCVar then
+		SetCVar("statusText", "1")
+		SetCVar("statusTextDisplay", "NUMERIC")
+		SetCVar("nameplateShowAll", 1) -- always show the nameplates (combat/noncombat)
+		SetCVar("nameplateShowFriends", 1) -- show for friendly units
+		SetCVar("nameplateShowEnemies", 1) -- Enemy
+		SetCVar("nameplateShowEnemyMinus", 1) -- Enemy Minors
+		SetCVar("nameplateMaxDistance", 100) --default 60
+		SetCVar("UnitNameNPC", "0") --this is necessary as part of the (Hostile, Quest, and Interactive NPCs) group
+		SetCVar("UnitNameFriendlyPlayerName", "1")
+		SetCVar("UnitNameFriendlyMinionName", "1")
+		SetCVar("UnitNameEnemyPlayerName", "1")
+		SetCVar("UnitNameEnemyMinionName", "1")
+	end
 
 	--OPEN ALL BAGS AT BANK
 	----------------------
 	if C_PlayerInteractionManager then
-		local InteractType = Enum.PlayerInteractionType
-		addon:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW", function(event, winArg)
-			if winArg == InteractType.Banker then
-				addon:OpenBankBags()
-			end
-		end)
+		addon:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
 	else
-		Unit:RegisterEvent('BANKFRAME_OPENED', function()
-			addon:OpenBankBags()
-		end)
+		addon:RegisterEvent("BANKFRAME_OPENED")
 	end
 	----------------------
 
@@ -368,5 +389,5 @@ function addon:EnableAddon()
 	SLASH_XANUI2 = "/xanui";
 	SlashCmdList["XANUI"] = XanUI_SlashCommand;
 
-	DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"], ver))
+	DEFAULT_CHAT_FRAME:AddMessage(string.format(L.AddonLoaded, ver))
 end

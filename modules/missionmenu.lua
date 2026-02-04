@@ -1,18 +1,30 @@
 local ADDON_NAME, private = ...
 local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "missionmenu"
 
 local function GetAtlasInfo(atlas)
-    local info = C_Texture.GetAtlasInfo(atlas)
-    if info then
-        local file = info.filename or info.file
-        return file, info.width, info.height, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord, info.tilesHorizontally, info.tilesVertically
-    end
+	if type(atlas) == "table" then
+		for _, name in ipairs(atlas) do
+			local info = C_Texture.GetAtlasInfo(name)
+			if info then
+				local file = info.filename or info.file
+				return file, info.width, info.height, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord, info.tilesHorizontally, info.tilesVertically
+			end
+		end
+		return
+	end
+
+	local info = C_Texture.GetAtlasInfo(atlas)
+	if info then
+		local file = info.filename or info.file
+		return file, info.width, info.height, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord, info.tilesHorizontally, info.tilesVertically
+	end
 end
 
 local function addButton(level, text, isTitle, notCheckable, hasArrow, value, func, minimapIcon)
@@ -41,8 +53,6 @@ end
 
 local function MM_CreateMenu()
 
-    local xpacTable = {}
-
     local xanMissionMenu = CreateFrame("Frame", "XanUI_MissionMenu")
 	xanMissionMenu.displayMode = 'MENU'
 
@@ -62,8 +72,14 @@ local function MM_CreateMenu()
 		classIconName = "SHAMAN" --for legion the Evokers don't have a class hall, use the shaman one instead
 	end
 
+	local warWithinLandingType = Enum.ExpansionLandingPageType
+		and (Enum.ExpansionLandingPageType.TheWarWithin or Enum.ExpansionLandingPageType.WarWithin or Enum.ExpansionLandingPageType.KhazAlgar)
+	local warWithinExpansionID = _G.LE_EXPANSION_WAR_WITHIN or _G.LE_EXPANSION_THE_WAR_WITHIN
+		or (LE_EXPANSION_DRAGONFLIGHT and LE_EXPANSION_DRAGONFLIGHT + 1)
+	local warWithinName = _G.EXPANSION_NAME10 or "The War Within"
+
 	local expansions = {
-		["WarlordsOfDraenor"] = {
+		{
 			["key"] = "WarlordsOfDraenor",
 			["id"] = LE_EXPANSION_WARLORDS_OF_DRAENOR,
 			["name"] = EXPANSION_NAME5,
@@ -72,7 +88,7 @@ local function MM_CreateMenu()
 			["minimapIcon"] = string.format("GarrLanding-MinimapIcon-%s-Up", playerInfo.factionGroup),
 			["landingPageType"] = 1, --use 1 for the older landingpages and 2 for the newer dragonflight ones
 		},
-		["Legion"] = {
+		{
 			["key"] = "Legion",
 			["id"] = LE_EXPANSION_LEGION,
 			["name"] = EXPANSION_NAME6,
@@ -81,7 +97,7 @@ local function MM_CreateMenu()
 			["minimapIcon"] = string.format("legionmission-landingbutton-%s-up", classIconName),
 			["landingPageType"] = 1,
 		},
-		["BattleForAzeroth"] = {
+		{
 			["key"] = "BattleForAzeroth",
 			["id"] = LE_EXPANSION_BATTLE_FOR_AZEROTH,
 			["name"] = EXPANSION_NAME7,
@@ -90,7 +106,7 @@ local function MM_CreateMenu()
 			["minimapIcon"] = string.format("bfa-landingbutton-%s-up", playerInfo.factionGroup),
 			["landingPageType"] = 1,
 		},
-		["Shadowlands"] = {
+		{
 			["key"] = "Shadowlands",
 			["id"] = LE_EXPANSION_SHADOWLANDS,
 			["name"] = EXPANSION_NAME8,
@@ -99,7 +115,7 @@ local function MM_CreateMenu()
 			["minimapIcon"] = string.format("shadowlands-landingbutton-%s-up", playerInfo.covenantTex),
 			["landingPageType"] = 1,
 		},
-		["Dragonflight"] = {
+		{
 			["key"] = "Dragonflight",
 			["id"] = LE_EXPANSION_DRAGONFLIGHT,
 			["name"] = EXPANSION_NAME9,
@@ -108,14 +124,16 @@ local function MM_CreateMenu()
 			["minimapIcon"] = "dragonflight-landingbutton-up",
 			["landingPageType"] = 2,
 		},
+		{
+			["key"] = "TheWarWithin",
+			["id"] = warWithinExpansionID,
+			["name"] = warWithinName,
+			["banner"] = "accountupgradebanner-warwithin",
+			["garrisonTypeID"] = warWithinLandingType,
+			["minimapIcon"] = { "khazalgar-landingbutton-up", "dragonflight-landingbutton-up" },
+			["landingPageType"] = 2,
+		},
 	}
-
-	for name, expansion in pairs(expansions) do
-		tinsert(xpacTable, expansion);
-	end
-	table.sort(xpacTable, function(a, b)
-		return a.id < b.id;
-	end)
 
 	local function openMissionPage(expansion)
 		if expansion.landingPageType == 1 then
@@ -139,9 +157,9 @@ local function MM_CreateMenu()
 	xanMissionMenu.initialize = function(self, level)
 		if level == 1 then
 			PlaySound(SOUNDKIT.GS_TITLE_OPTION_EXIT)
-			addButton(level, L["XanUI MissionMenu"], 1, 1)
+			addButton(level, L.MissionMenuTitle, 1, 1)
 
-			for _, expansion in ipairs(xpacTable) do
+			for _, expansion in ipairs(expansions) do
 				local garrTypeID = expansion.garrisonTypeID
 				if garrTypeID then
 
@@ -155,7 +173,7 @@ local function MM_CreateMenu()
 							if C_Garrison.HasGarrison(garrTypeID) then passChk = true end
 						end
 					else
-						if garrTypeID == Enum.ExpansionLandingPageType.Dragonflight and C_PlayerInfo.IsExpansionLandingPageUnlockedForPlayer(LE_EXPANSION_DRAGONFLIGHT) then
+						if expansion.id and C_PlayerInfo.IsExpansionLandingPageUnlockedForPlayer(expansion.id) then
 							passChk = true
 						end
 					end
@@ -170,7 +188,7 @@ local function MM_CreateMenu()
 			end
 
 			addButton(level, "", nil, 1) --space ;)
-			addButton(level, L["Close"], nil, 1)
+			addButton(level, L.Close, nil, 1)
 		end
 	end
 
@@ -181,7 +199,7 @@ local function MBtn_OnEnter(self)
 	GameTooltip:SetText(self.title, 1, 1, 1)
 	GameTooltip:AddLine(self.description, nil, nil, nil, true)
 
-	local tooltipAddonText = L["|cFF99CC33Right-click to select expansion.|r"]
+	local tooltipAddonText = L.RightClickSelectExpansion
 	GameTooltip_AddNormalLine(GameTooltip, " ") --empty line
 	GameTooltip_AddNormalLine(GameTooltip, tooltipAddonText)
 	GameTooltip:Show()

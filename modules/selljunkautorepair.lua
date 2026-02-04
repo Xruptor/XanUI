@@ -1,9 +1,10 @@
 local ADDON_NAME, private = ...
 local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "selljunkautorepair"
 
@@ -11,16 +12,21 @@ addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, Backdrop
 local moduleFrame = addon[moduleName]
 addon:EmbedEvents(moduleFrame)
 
-local WOW_PROJECT_ID = _G.WOW_PROJECT_ID
-local WOW_PROJECT_MAINLINE = _G.WOW_PROJECT_MAINLINE
-local WOW_PROJECT_CLASSIC = _G.WOW_PROJECT_CLASSIC
---local WOW_PROJECT_BURNING_CRUSADE_CLASSIC = _G.WOW_PROJECT_BURNING_CRUSADE_CLASSIC
-local WOW_PROJECT_WRATH_CLASSIC = _G.WOW_PROJECT_WRATH_CLASSIC
+local IsRetail = addon.IsRetail
 
-local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
-local IsClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
---local IsTBC_C = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
-local IsWLK_C = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
+local UseContainerAPI = C_Container and C_Container.GetContainerItemInfo
+local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+local GetContainerItemInfo = (C_Container and C_Container.GetContainerItemInfo) or GetContainerItemInfo
+local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
+local UseContainerItem = (C_Container and C_Container.UseContainerItem) or UseContainerItem
+local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+local GetCoinString = function(amount)
+	if addon.GetCoinString then
+		return addon:GetCoinString(amount)
+	end
+	local coinFn = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or GetCoinTextureString or GetCoinText
+	return coinFn and coinFn(amount or 0) or tostring(amount or 0)
+end
 
 ----------------------------------------------------------------
 ---Sell Junk at Vendors
@@ -30,7 +36,6 @@ local doGuildRepairs = false
 moduleFrame.GreyLootList = {}
 moduleFrame.moneyCount = 0
 moduleFrame.itemCount = 0
-moduleFrame.sellAttempts = 0
 moduleFrame.totalSlots = 0
 
 local ignoreList = {
@@ -52,11 +57,11 @@ function moduleFrame:StopSellingTimer(endedEarly)
 		moduleFrame.sellGreyTimer = nil
 	end
 	if endedEarly then
-		DEFAULT_CHAT_FRAME:AddMessage(L["xanUI: (WARNING) you exited merchant before addon could finish selling greys."])
+		DEFAULT_CHAT_FRAME:AddMessage(L.SellGreysInterrupted)
 	end
 
 	if moduleFrame.moneyCount > 0 then
-		DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: <%d> Total grey items vendored. [%s]"], moduleFrame.itemCount, GetCoinTextureString(moduleFrame.moneyCount)))
+		DEFAULT_CHAT_FRAME:AddMessage(string.format(L.SellGreysSummary, moduleFrame.itemCount, GetCoinString(moduleFrame.moneyCount)))
 	end
 end
 
@@ -86,47 +91,46 @@ function moduleFrame:MERCHANT_SHOW()
 	moduleFrame.totalSlots = 0
 	moduleFrame.sellIndexCount = 0
 
-	local xGetNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
-	local xGetContainerInfo = (C_Container and C_Container.GetContainerItemInfo) or GetContainerItemInfo
-	local xGetContainerItemDurability = (C_Container and C_Container.GetContainerItemDurability) or GetContainerItemDurability
-	local xGetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
-	local xUseContainerItem = (C_Container and C_Container.UseContainerItem) or UseContainerItem
-
 	local minCnt, maxCnt = GetBagSlots("bag")
 
 	-- gather info
 	for bag = minCnt, maxCnt do
-		for slot = 1, xGetNumSlots(bag) do
-			local itemID = xGetContainerItemID(bag, slot)
+		for slot = 1, GetContainerNumSlots(bag) do
+			local itemID
+			local stackCount
+			local quality
+			local noValue
 
-			if itemID and not ignoreList[itemID] then
-
-				local stackCount, quality, itemLink, noValue
-
-				if IsRetail then
-
-					local containerInfo = xGetContainerInfo(bag, slot)
-					if containerInfo and containerInfo.quality and containerInfo.quality == 0 and not containerInfo.hasNoValue then
-						local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
-						--make sure it's not a quest item and it has a sell value
-						if itemType ~= "Quest" and containerInfo.quality == 0 and itemSellPrice > 0 then
-							local stackPrice = (itemSellPrice or 0) * containerInfo.stackCount
-							table.insert(moduleFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=containerInfo.stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
-						end
-					end
-
-				else
-					_, stackCount, _, quality, _, _, itemLink, _, noValue = xGetContainerInfo(bag, slot)
-					if quality == 0 and not noValue then
-						local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
-						--make sure it's not a quest item and it has a sell value
-						if itemType ~= "Quest" and quality == 0 and itemSellPrice > 0 then
-							local stackPrice = (itemSellPrice or 0) * stackCount
-							table.insert(moduleFrame.GreyLootList, {bag=bag, slot=slot, itemID=itemID, stackCount=stackCount, stackPrice=stackPrice, itemSellPrice=itemSellPrice} )
-						end
-					end
+			if UseContainerAPI then
+				local containerInfo = GetContainerItemInfo(bag, slot)
+				if containerInfo then
+					itemID = containerInfo.itemID
+					stackCount = containerInfo.stackCount or 1
+					quality = containerInfo.quality
+					noValue = containerInfo.hasNoValue
 				end
+			else
+				local _, count, _, q, _, _, _, _, nv = GetContainerItemInfo(bag, slot)
+				itemID = GetContainerItemID and GetContainerItemID(bag, slot) or itemID
+				stackCount = count
+				quality = q
+				noValue = nv
+			end
 
+			if itemID and not ignoreList[itemID] and quality == 0 and not noValue then
+				local _, _, _, _, _, itemType, _, _, _, _, itemSellPrice = GetItemInfo(itemID)
+				--make sure it's not a quest item and it has a sell value
+				if itemType ~= "Quest" and itemSellPrice and itemSellPrice > 0 then
+					local stackPrice = itemSellPrice * (stackCount or 1)
+					table.insert(moduleFrame.GreyLootList, {
+						bag = bag,
+						slot = slot,
+						itemID = itemID,
+						stackCount = stackCount or 1,
+						stackPrice = stackPrice,
+						itemSellPrice = itemSellPrice,
+					})
+				end
 			end
 			moduleFrame.totalSlots = moduleFrame.totalSlots + 1
 		end
@@ -157,7 +161,7 @@ function moduleFrame:MERCHANT_SHOW()
 				moduleFrame.itemCount = moduleFrame.itemCount + 1
 
 				--print(moduleFrame.itemCount , moduleFrame.moneyCount)
-				xUseContainerItem(moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot)
+				UseContainerItem(moduleFrame.GreyLootList[index].bag, moduleFrame.GreyLootList[index].slot)
 			else
 				--we don't have another index so exit the timer
 				moduleFrame:StopSellingTimer()
@@ -178,19 +182,19 @@ function moduleFrame:MERCHANT_SHOW()
 				else
 					amount = min(amount, guildMoney)
 				end
-				if amount > repairCost then
-					RepairAllItems(1)
-					DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Repaired from Guild. [%s]"], GetCoinTextureString(repairCost)))
+				if amount >= repairCost then
+					RepairAllItems(true)
+					DEFAULT_CHAT_FRAME:AddMessage(string.format(L.RepairGuild, GetCoinString(repairCost)))
 					return
 				else
-					DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Insufficient guild funds to make repairs. [%s]"], GetCoinTextureString(repairCost)))
+					DEFAULT_CHAT_FRAME:AddMessage(string.format(L.RepairGuildInsufficient, GetCoinString(repairCost)))
 				end
-			elseif GetMoney() > repairCost then
+			elseif GetMoney() >= repairCost then
 				RepairAllItems()
-				DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Repaired all items. [%s]"], GetCoinTextureString(repairCost)))
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(L.RepairAll, GetCoinString(repairCost)))
 				return
 			else
-				DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Insufficient funds to make repairs. [%s]"], GetCoinTextureString(repairCost)))
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(L.RepairInsufficient, GetCoinString(repairCost)))
 			end
 		end
 	end

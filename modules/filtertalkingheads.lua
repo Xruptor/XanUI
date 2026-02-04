@@ -1,9 +1,10 @@
 local ADDON_NAME, private = ...
 local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "filtertalkingheads"
 
@@ -33,7 +34,7 @@ local function EnableFilterTalkingHeads()
 				talkingHeadDB[vo] = true
 			else
 				--don't spam the notice
-				DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00FF96xanUI: TalkingHead conversation silenced.|r"])
+				DEFAULT_CHAT_FRAME:AddMessage(L.TalkingHeadSilenced)
 				self:CloseImmediately()
 			end
 		end

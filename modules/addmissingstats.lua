@@ -1,8 +1,12 @@
-local ADDON_NAME, addon = ...
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local ADDON_NAME, private = ...
+if type(private) ~= "table" then
+	private = {}
 end
-addon = _G[ADDON_NAME]
+local addon = (private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME)) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
+end
 
 local moduleName = "addmissingstats"
 
@@ -59,9 +63,9 @@ local function EnableInsertStats()
 
 	if playerClass ~= "WARRIOR" then
 		--1 is the top category with intellect and such, 2 is the second category
-		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" });
-		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_AP" });
-		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "SPELLPOWER" });
+		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_DAMAGE" })
+		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "ATTACK_AP" })
+		tinsert(PAPERDOLL_STATCATEGORIES[1].stats, { stat = "SPELLPOWER" })
 	end
 	
 end

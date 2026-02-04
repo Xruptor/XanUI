@@ -1,9 +1,10 @@
 local ADDON_NAME, private = ...
 local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
-if not _G[ADDON_NAME] then
-	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+local addon = private and private.GetAddonFrame and private:GetAddonFrame(ADDON_NAME) or _G[ADDON_NAME]
+if not addon then
+	addon = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	_G[ADDON_NAME] = addon
 end
-local addon = _G[ADDON_NAME]
 
 local moduleName = "racegenderplates"
 
@@ -25,7 +26,7 @@ local fixedRaceAtlasNames = {
 	["zandalaritroll"] = "zandalari",
 }
 
-function GetRaceAtlas(raceName, gender, useHiRez)
+local function GetRaceAtlas(raceName, gender, useHiRez)
 	if (fixedRaceAtlasNames[raceName]) then
 		raceName = fixedRaceAtlasNames[raceName]
 	end
@@ -33,13 +34,7 @@ function GetRaceAtlas(raceName, gender, useHiRez)
 	return formatingString:format(raceName, gender)
 end
 
-function GetGenderAtlases(genderName)
-	local baseAtlas = ("charactercreate-gendericon-%s"):format(genderName)
-	local selectedAtlas = ("%s-selected"):format(baseAtlas)
-	return baseAtlas, selectedAtlas
-end
-
-CUSTOM_FACTION_BAR_COLORS = {
+local CUSTOM_FACTION_BAR_COLORS = {
     [1] = {r = 1, g = 0, b = 0},
     [2] = {r = 1, g = 0, b = 0},
     [3] = {r = 1, g = 1, b = 0},
@@ -50,9 +45,10 @@ CUSTOM_FACTION_BAR_COLORS = {
     [8] = {r = 0, g = 1, b = 0},
 }
 
-function GetUnitColor(unit)
+local function GetUnitColor(unit)
 
     local r, g, b
+	local classColor = C_ClassColor and C_ClassColor.GetClassColor
 
     if (UnitIsDead(unit) or UnitIsGhost(unit) or UnitIsTapDenied(unit)) then
         r = 0.5
@@ -62,9 +58,16 @@ function GetUnitColor(unit)
         if (UnitIsFriend(unit, 'player')) then
             local _, class = UnitClass(unit)
             if ( class ) then
-                r = RAID_CLASS_COLORS[class].r
-                g = RAID_CLASS_COLORS[class].g
-                b = RAID_CLASS_COLORS[class].b
+				local color = classColor and classColor(class) or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[class])
+				if color then
+					r = color.r
+					g = color.g
+					b = color.b
+				else
+					r = 0.60
+					g = 0.60
+					b = 0.60
+				end
             else
                 r = 0.60
                 g = 0.60
@@ -168,7 +171,7 @@ local function UpdateIcons(f, plate, unitID)
 
 	if iconGender and XanUIDB.showGenderIcon then
 
-		if UnitIsPlayer(unitID) and UnitName(unitID) ~= UnitName("player") then
+		if UnitIsPlayer(unitID) and not UnitIsUnit(unitID, "player") then
 
 			local texture
 			local _, race = UnitRace(unitID)
@@ -213,7 +216,7 @@ local function UpdateIcons(f, plate, unitID)
 	--GENDER TEXT
 	dontHide = false
 
-	if genderLabel and XanUIDB.showGenderText and UnitName(unitID) ~= UnitName("player") then
+	if genderLabel and XanUIDB.showGenderText and not UnitIsUnit(unitID, "player") then
 
 		local _, race = UnitRace(unitID)
 		local sexID = UnitSex(unitID)
@@ -232,12 +235,12 @@ local function UpdateIcons(f, plate, unitID)
 
 				if getName then
 					if genders[sexID] == "male" then
-						genderLabel:SetText(L["[M]"])
+						genderLabel:SetText(L.GenderMale)
 						genderLabel:SetPoint("LEFT",-9,5)
 						genderLabel:Show()
 						dontHide = true
 					elseif genders[sexID] == "female" then
-						genderLabel:SetText(L["[F]"])
+						genderLabel:SetText(L.GenderFemale)
 						genderLabel:SetPoint("LEFT",-4,5)
 						genderLabel:Show()
 						dontHide = true
@@ -286,7 +289,7 @@ function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 		genderLabel:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
 		genderLabel:SetJustifyH("LEFT")
 		genderLabel:SetPoint("LEFT",-5,5)
-		genderLabel:SetText(L["[M]"])
+		genderLabel:SetText(L.GenderMale)
 		genderLabel:Hide()
 	end
 end

@@ -7,12 +7,14 @@ L.SlashGenderIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - 이제 [
 L.SlashGenderTextStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - 이제 [|cFF20ff20%s|r]입니다."
 L.SlashOnlyDracStatus = "|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - 이제 [|cFF20ff20%s|r]입니다."
 L.SlashShowQuestsStatus = "|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - 이제 [|cFF20ff20%s|r]입니다."
+L.SlashSpecIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20specicon|r] - is now [|cFF20ff20%s|r]."
 
 L.SlashHelpShowRace = "/xanui showrace - 종족 아이콘 표시를 전환합니다."
 L.SlashHelpGenderIcon = "/xanui gendericon - 성별 아이콘 표시를 전환합니다."
 L.SlashHelpGenderText = "/xanui gendertext - 성별 텍스트 표시를 전환합니다."
 L.SlashHelpOnlyDrac = "/xanui onlydrac - Dracthyr만 성별 아이콘/텍스트를 전환합니다."
 L.SlashHelpShowQuests = "/xanui showquests - 퀘스트 아이콘 표시를 전환합니다."
+L.SlashHelpSpecIcon = "/xanui specicon - Toggles showing the target spec icon."
 
 L.AddonLoaded = "|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"
 

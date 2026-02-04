@@ -72,8 +72,9 @@ local function MM_CreateMenu()
 		classIconName = "SHAMAN" --for legion the Evokers don't have a class hall, use the shaman one instead
 	end
 
-	local warWithinLandingType = Enum.ExpansionLandingPageType
-		and (Enum.ExpansionLandingPageType.TheWarWithin or Enum.ExpansionLandingPageType.WarWithin or Enum.ExpansionLandingPageType.KhazAlgar)
+	local landingEnum = Enum and Enum.ExpansionLandingPageType
+	local warWithinLandingType = landingEnum
+		and (landingEnum.TheWarWithin or landingEnum.WarWithin or landingEnum.KhazAlgar)
 	local warWithinExpansionID = _G.LE_EXPANSION_WAR_WITHIN or _G.LE_EXPANSION_THE_WAR_WITHIN
 		or (LE_EXPANSION_DRAGONFLIGHT and LE_EXPANSION_DRAGONFLIGHT + 1)
 	local warWithinName = _G.EXPANSION_NAME10 or "The War Within"
@@ -120,7 +121,7 @@ local function MM_CreateMenu()
 			["id"] = LE_EXPANSION_DRAGONFLIGHT,
 			["name"] = EXPANSION_NAME9,
 			["banner"] = "accountupgradebanner-dragonflight",
-			["garrisonTypeID"] = Enum.ExpansionLandingPageType.Dragonflight,
+			["garrisonTypeID"] = landingEnum and landingEnum.Dragonflight,
 			["minimapIcon"] = "dragonflight-landingbutton-up",
 			["landingPageType"] = 2,
 		},

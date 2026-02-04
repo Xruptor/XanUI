@@ -7,12 +7,14 @@ L.SlashGenderIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - 現在�
 L.SlashGenderTextStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - 現在為 [|cFF20ff20%s|r]。"
 L.SlashOnlyDracStatus = "|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - 現在為 [|cFF20ff20%s|r]。"
 L.SlashShowQuestsStatus = "|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - 現在為 [|cFF20ff20%s|r]。"
+L.SlashSpecIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20specicon|r] - is now [|cFF20ff20%s|r]."
 
 L.SlashHelpShowRace = "/xanui showrace - 切換顯示種族圖示。"
 L.SlashHelpGenderIcon = "/xanui gendericon - 切換顯示性別圖示。"
 L.SlashHelpGenderText = "/xanui gendertext - 切換顯示性別文字。"
 L.SlashHelpOnlyDrac = "/xanui onlydrac - 僅為 Dracthyr 切換性別圖示/文字。"
 L.SlashHelpShowQuests = "/xanui showquests - 切換顯示任務圖示。"
+L.SlashHelpSpecIcon = "/xanui specicon - Toggles showing the target spec icon."
 
 L.AddonLoaded = "|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"
 

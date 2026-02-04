@@ -7,12 +7,14 @@ L.SlashGenderIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - agora es
 L.SlashGenderTextStatus = "|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - agora esta [|cFF20ff20%s|r]."
 L.SlashOnlyDracStatus = "|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - agora esta [|cFF20ff20%s|r]."
 L.SlashShowQuestsStatus = "|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - agora esta [|cFF20ff20%s|r]."
+L.SlashSpecIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20specicon|r] - is now [|cFF20ff20%s|r]."
 
 L.SlashHelpShowRace = "/xanui showrace - Alterna a exibicao do icone de raca."
 L.SlashHelpGenderIcon = "/xanui gendericon - Alterna a exibicao do icone de genero."
 L.SlashHelpGenderText = "/xanui gendertext - Alterna a exibicao do texto de genero."
 L.SlashHelpOnlyDrac = "/xanui onlydrac - Alterna icone/texto de genero apenas para Dracthyr."
 L.SlashHelpShowQuests = "/xanui showquests - Alterna os icones de missao."
+L.SlashHelpSpecIcon = "/xanui specicon - Toggles showing the target spec icon."
 
 L.AddonLoaded = "|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"
 

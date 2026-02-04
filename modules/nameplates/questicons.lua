@@ -172,6 +172,17 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		return
 	end
 
+	local function GetLineLeftText(line)
+		if not line then return nil end
+		if line.leftText then return line.leftText end
+		if line.text then return line.text end
+		if line.left and type(line.left) == "table" then
+			if line.left.text then return line.left.text end
+			if line.left.value then return line.left.value end
+		end
+		return nil
+	end
+
 	local questType = 0
 	local questTypePriority = 0
 	local hasObjective = false
@@ -193,10 +204,12 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 		for i = 3, #tooltipData.lines do
 
 			local line = tooltipData.lines[i]
-			TooltipUtil.SurfaceArgs(line)
+			if TooltipUtil and TooltipUtil.SurfaceArgs then
+				TooltipUtil.SurfaceArgs(line)
+			end
 
 			if line then
-				local text = line.leftText
+				local text = GetLineLeftText(line)
 
 				if text and questByTitle[text] then
 					local questID = questByTitle[text]
@@ -522,23 +535,30 @@ end
 local function EnableQuestIcons()
 	if not addon.IsRetail then return end
 
-	moduleFrame:RegisterEvent("QUEST_ACCEPTED")
-	moduleFrame:RegisterEvent("QUEST_REMOVED")
-	moduleFrame:RegisterEvent("QUEST_TURNED_IN")
-	moduleFrame:RegisterEvent("QUEST_COMPLETED")
-	moduleFrame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
-	moduleFrame:RegisterEvent("QUEST_WATCH_UPDATE")
-	moduleFrame:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
-	moduleFrame:RegisterEvent("UI_SCALE_CHANGED")
+	local function SafeRegisterEvent(event, callback)
+		local ok = pcall(moduleFrame.RegisterEvent, moduleFrame, event, callback)
+		if not ok then
+			Debug("Skipped unknown event: " .. tostring(event))
+		end
+	end
+
+	SafeRegisterEvent("QUEST_ACCEPTED")
+	SafeRegisterEvent("QUEST_REMOVED")
+	SafeRegisterEvent("QUEST_TURNED_IN")
+	SafeRegisterEvent("QUEST_COMPLETED")
+	SafeRegisterEvent("QUEST_DATA_LOAD_RESULT")
+	SafeRegisterEvent("QUEST_WATCH_UPDATE")
+	SafeRegisterEvent("UNIT_QUEST_LOG_CHANGED")
+	SafeRegisterEvent("UI_SCALE_CHANGED")
 
 	--QUESTTASK_UPDATE
 	--TASK_PROGRESS_UPDATE
 
-	moduleFrame:RegisterEvent("PLAYER_ENTERING_WORLD", function()
-		moduleFrame:RegisterEvent("QUEST_LOG_UPDATE")
+	SafeRegisterEvent("PLAYER_ENTERING_WORLD", function()
+		SafeRegisterEvent("QUEST_LOG_UPDATE")
 		Debug("PLAYER_ENTERING_WORLD")
 	end)
-	moduleFrame:RegisterEvent("PLAYER_LEAVING_WORLD", function()
+	SafeRegisterEvent("PLAYER_LEAVING_WORLD", function()
 		moduleFrame:UnregisterEvent('QUEST_LOG_UPDATE')
 		Debug("PLAYER_LEAVING_WORLD")
 	end)

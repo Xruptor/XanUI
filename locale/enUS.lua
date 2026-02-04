@@ -9,6 +9,9 @@ L.SlashOnlyDracStatus = "|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF
 L.SlashShowQuestsStatus = "|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20%s|r]."
 L.SlashTargetClassColorStatus = "|cFF99CC33xanUI|r [|cFF20ff20targetclasscolor|r] - is now [|cFF20ff20%s|r]."
 L.SlashSpecIconStatus = "|cFF99CC33xanUI|r [|cFF20ff20specicon|r] - is now [|cFF20ff20%s|r]."
+L.SlashSpecCacheHeader = "|cFF99CC33xanUI|r [|cFF20ff20speccache|r] - entries: |cFF20ff20%s|r"
+L.SlashSpecCacheCleared = "|cFF99CC33xanUI|r [|cFF20ff20speccache|r] - cleared |cFF20ff20%s|r entries."
+L.SlashSpecCacheEmpty = "|cFF99CC33xanUI|r [|cFF20ff20speccache|r] - cache is empty."
 
 L.SlashHelpShowRace = "/xanui showrace - Toggles showing the race icon."
 L.SlashHelpGenderIcon = "/xanui gendericon - Toggles showing the gender icon."
@@ -17,6 +20,8 @@ L.SlashHelpOnlyDrac = "/xanui onlydrac - Toggles showing gender icon/text for Dr
 L.SlashHelpShowQuests = "/xanui showquests - Toggles showing quest icons."
 L.SlashHelpTargetClassColor = "/xanui targetclasscolor - Toggles class color on target/targettarget health bars."
 L.SlashHelpSpecIcon = "/xanui specicon - Toggles showing the target spec icon."
+L.SlashHelpSpecCacheShow = "/xanui speccache [show] - Lists cached spec entries."
+L.SlashHelpSpecCacheClear = "/xanui speccache clear - Clears the spec cache."
 
 L.AddonLoaded = "|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"
 

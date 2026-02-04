@@ -20,6 +20,9 @@ locale\zhTW.lua
 
 xanUI.lua
 
+modules\specicons.lua
+modules\coloredhealthbars.lua
+
 modules\nameplates\nameplateHooks.lua
 modules\nameplates\racegenderplates.lua
 modules\nameplates\questicons.lua

@@ -3,20 +3,172 @@
 	Don't say I didn't warn you!
 --]]
 
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
+if type(private) ~= "table" then
+	private = {}
+end
+local L = private.L or setmetatable({}, { __index = function(_, key) return key end })
+
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
-LibStub("AceEvent-3.0"):Embed(addon)
+local addon = _G[ADDON_NAME]
+addon.private = private
+addon.L = L
+
+local function EnsureEventDispatcher(target)
+	if target._xanui_events then return end
+	target._xanui_events = {}
+	target._xanui_rawRegisterEvent = target.RegisterEvent
+	target._xanui_rawUnregisterEvent = target.UnregisterEvent
+	target._xanui_rawUnregisterAllEvents = target.UnregisterAllEvents
+
+	target:SetScript("OnEvent", function(self, event, ...)
+		local handlers = self._xanui_events and self._xanui_events[event]
+		if not handlers then return end
+		for i = 1, #handlers do
+			local h = handlers[i]
+			if h.passSelf then
+				local fn = h.fn
+				if type(fn) == "string" then
+					fn = self[fn]
+				end
+				if fn then
+					fn(self, event, ...)
+				end
+			else
+				if type(h.fn) == "string" then
+					local method = self[h.fn]
+					if method then
+						method(self, event, ...)
+					end
+				elseif h.fn then
+					h.fn(event, ...)
+				end
+			end
+		end
+	end)
+end
+
+function addon:EmbedEvents(target)
+	if target._xanui_events_embedded then return end
+	target._xanui_events_embedded = true
+
+	EnsureEventDispatcher(target)
+	addon._xanui_messageHandlers = addon._xanui_messageHandlers or {}
+
+	target.RegisterEvent = function(self, event, callback)
+		if not event then return end
+		local handlers = self._xanui_events[event]
+		if not handlers then
+			handlers = {}
+			self._xanui_events[event] = handlers
+		end
+		if callback == nil then
+			table.insert(handlers, { fn = event, passSelf = true })
+		elseif type(callback) == "string" then
+			table.insert(handlers, { fn = callback, passSelf = true })
+		else
+			table.insert(handlers, { fn = callback, passSelf = false })
+		end
+		self._xanui_rawRegisterEvent(self, event)
+	end
+
+	target.UnregisterEvent = function(self, event, callback)
+		if not event then return end
+		local handlers = self._xanui_events[event]
+		if handlers then
+			if callback then
+				for i = #handlers, 1, -1 do
+					if handlers[i].fn == callback then
+						table.remove(handlers, i)
+					end
+				end
+			else
+				self._xanui_events[event] = nil
+			end
+		end
+		self._xanui_rawUnregisterEvent(self, event)
+	end
+
+	target.UnregisterAllEvents = function(self)
+		self._xanui_events = {}
+		self._xanui_rawUnregisterAllEvents(self)
+	end
+
+	target.RegisterMessage = function(self, message, callback)
+		if not message then return end
+		local handlers = addon._xanui_messageHandlers[message]
+		if not handlers then
+			handlers = {}
+			addon._xanui_messageHandlers[message] = handlers
+		end
+		local entry
+		if callback == nil then
+			entry = { target = self, fn = message, passSelf = true }
+		elseif type(callback) == "string" then
+			entry = { target = self, fn = callback, passSelf = true }
+		else
+			entry = { target = self, fn = callback, passSelf = false }
+		end
+		table.insert(handlers, entry)
+	end
+
+	target.UnregisterMessage = function(self, message, callback)
+		if not message then return end
+		local handlers = addon._xanui_messageHandlers and addon._xanui_messageHandlers[message]
+		if not handlers then return end
+		if callback then
+			for i = #handlers, 1, -1 do
+				local h = handlers[i]
+				if h.target == self and h.fn == callback then
+					table.remove(handlers, i)
+				end
+			end
+		else
+			for i = #handlers, 1, -1 do
+				if handlers[i].target == self then
+					table.remove(handlers, i)
+				end
+			end
+		end
+		if #handlers == 0 then
+			addon._xanui_messageHandlers[message] = nil
+		end
+	end
+
+	target.SendMessage = function(self, message, ...)
+		if not message then return end
+		local handlers = addon._xanui_messageHandlers and addon._xanui_messageHandlers[message]
+		if not handlers then return end
+		for i = 1, #handlers do
+			local h = handlers[i]
+			if h.passSelf then
+				local fn = h.fn
+				if type(fn) == "string" then
+					fn = h.target[fn]
+				end
+				if fn then
+					fn(h.target, message, ...)
+				end
+			else
+				if type(h.fn) == "string" then
+					local method = h.target[h.fn]
+					if method then
+						method(h.target, message, ...)
+					end
+				elseif h.fn then
+					h.fn(message, ...)
+				end
+			end
+		end
+	end
+end
+
+addon:EmbedEvents(addon)
 
 addon.IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 addon.moduleFuncs = {}
-
-local debugf = tekDebug and tekDebug:GetFrame(ADDON_NAME)
-local function Debug(...)
-    if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
-end
 
 local function OnEnable(event, arg1)
 	if event == "ADDON_LOADED" and arg1 and arg1 == ADDON_NAME then
@@ -44,7 +196,7 @@ function XanUI_SlashCommand(cmd)
 			else
 				XanUIDB.showRaceIcon = true
 			end
-			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20"..tostring(XanUIDB.showRaceIcon).."|r].")
+			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showRaceIcon)))
 			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "gendericon" then
@@ -53,7 +205,7 @@ function XanUI_SlashCommand(cmd)
 			else
 				XanUIDB.showGenderIcon = true
 			end
-			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderIcon).."|r].")
+			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showGenderIcon)))
 			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "gendertext" then
@@ -62,7 +214,7 @@ function XanUI_SlashCommand(cmd)
 			else
 				XanUIDB.showGenderText = true
 			end
-			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20"..tostring(XanUIDB.showGenderText).."|r].")
+			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showGenderText)))
 			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "onlydrac" then
@@ -71,7 +223,7 @@ function XanUI_SlashCommand(cmd)
 			else
 				XanUIDB.onlyDracthyr = true
 			end
-			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20"..tostring(XanUIDB.onlyDracthyr).."|r].")
+			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.onlyDracthyr)))
 			if addon["racegenderplates"] and addon["racegenderplates"].UpdateAllIcons then addon["racegenderplates"].UpdateAllIcons() end
 			return true
 		elseif c and c:lower() == "showquests" then
@@ -80,17 +232,17 @@ function XanUI_SlashCommand(cmd)
 			else
 				XanUIDB.showQuests = true
 			end
-			DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20"..tostring(XanUIDB.showQuests).."|r].")
+			DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20%s|r]."], tostring(XanUIDB.showQuests)))
 			return true
 		end
 	end
 
 	DEFAULT_CHAT_FRAME:AddMessage(ADDON_NAME, 64/255, 224/255, 208/255)
-	DEFAULT_CHAT_FRAME:AddMessage("/xanui showrace - Toggles showing the race icon.")
-	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendericon - Toggles showing the gender icon.")
-	DEFAULT_CHAT_FRAME:AddMessage("/xanui gendertext - Toggles showing the gender text.")
-	DEFAULT_CHAT_FRAME:AddMessage("/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only.")
-	DEFAULT_CHAT_FRAME:AddMessage("/xanui showquests - Toggles showing quest icons.")
+	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui showrace - Toggles showing the race icon."])
+	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui gendericon - Toggles showing the gender icon."])
+	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui gendertext - Toggles showing the gender text."])
+	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only."])
+	DEFAULT_CHAT_FRAME:AddMessage(L["/xanui showquests - Toggles showing quest icons."])
 end
 
 function addon:OpenBankBags()
@@ -119,7 +271,7 @@ function addon:EnableAddon()
 	if XanUIDB.onlyDracthyr == nil then XanUIDB.onlyDracthyr = true end
 	if XanUIDB.showQuests == nil then XanUIDB.showQuests = true end
 
-	local ver = GetAddOnMetadata("xanUI","Version") or 0
+	local ver = C_AddOns.GetAddOnMetadata("xanUI","Version") or 0
 
 
 	if addon.IsRetail then
@@ -216,5 +368,5 @@ function addon:EnableAddon()
 	SLASH_XANUI2 = "/xanui";
 	SlashCmdList["XANUI"] = XanUI_SlashCommand;
 
-	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanUI|r [v|cFF20ff20"..ver.."|r]   /xanui, /xui")
+	DEFAULT_CHAT_FRAME:AddMessage(string.format(L["|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"], ver))
 end

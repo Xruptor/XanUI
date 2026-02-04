@@ -1,14 +1,14 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
+local addon = _G[ADDON_NAME]
 
 local moduleName = "nameplateHooks"
 
 addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 local moduleFrame = addon[moduleName]
-LibStub("AceEvent-3.0"):Embed(moduleFrame)
+addon:EmbedEvents(moduleFrame)
 
 local Nameplates = {}
 local ActiveNameplates = {}

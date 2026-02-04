@@ -1,14 +1,15 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
+local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
+local addon = _G[ADDON_NAME]
 
 local moduleName = "filtertalkingheads"
 
 addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 local moduleFrame = addon[moduleName]
-LibStub("AceEvent-3.0"):Embed(moduleFrame)
+addon:EmbedEvents(moduleFrame)
 
 ----------------------------------------------------------------
 ---Shows talking head dialogue only once per session, don't spam it constantly
@@ -32,7 +33,7 @@ local function EnableFilterTalkingHeads()
 				talkingHeadDB[vo] = true
 			else
 				--don't spam the notice
-				DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF96xanUI: TalkingHead conversation silenced.|r")
+				DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00FF96xanUI: TalkingHead conversation silenced.|r"])
 				self:CloseImmediately()
 			end
 		end

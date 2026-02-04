@@ -1,14 +1,15 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
+local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
+local addon = _G[ADDON_NAME]
 
 local moduleName = "racegenderplates"
 
 addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 local moduleFrame = addon[moduleName]
-LibStub("AceEvent-3.0"):Embed(moduleFrame)
+addon:EmbedEvents(moduleFrame)
 
 local npHooks = addon["nameplateHooks"]
 local iconKey = ADDON_NAME .. "IconRace"
@@ -231,12 +232,12 @@ local function UpdateIcons(f, plate, unitID)
 
 				if getName then
 					if genders[sexID] == "male" then
-						genderLabel:SetText("[M]")
+						genderLabel:SetText(L["[M]"])
 						genderLabel:SetPoint("LEFT",-9,5)
 						genderLabel:Show()
 						dontHide = true
 					elseif genders[sexID] == "female" then
-						genderLabel:SetText("[F]")
+						genderLabel:SetText(L["[F]"])
 						genderLabel:SetPoint("LEFT",-4,5)
 						genderLabel:Show()
 						dontHide = true
@@ -285,7 +286,7 @@ function moduleFrame:XANUI_ON_NEWPLATE(event, f, plate)
 		genderLabel:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
 		genderLabel:SetJustifyH("LEFT")
 		genderLabel:SetPoint("LEFT",-5,5)
-		genderLabel:SetText("[M]")
+		genderLabel:SetText(L["[M]"])
 		genderLabel:Hide()
 	end
 end

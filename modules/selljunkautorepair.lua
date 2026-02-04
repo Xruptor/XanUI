@@ -1,15 +1,15 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
+local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
+local addon = _G[ADDON_NAME]
 
 local moduleName = "selljunkautorepair"
-local LibAceTimer = LibStub('AceTimer-3.0')
 
 addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 local moduleFrame = addon[moduleName]
-LibStub("AceEvent-3.0"):Embed(moduleFrame)
+addon:EmbedEvents(moduleFrame)
 
 local WOW_PROJECT_ID = _G.WOW_PROJECT_ID
 local WOW_PROJECT_MAINLINE = _G.WOW_PROJECT_MAINLINE
@@ -47,14 +47,16 @@ local ignoreList = {
 }
 
 function moduleFrame:StopSellingTimer(endedEarly)
-	LibAceTimer:CancelTimer(moduleFrame.sellGreyTimer)
-	moduleFrame.sellGreyTimer = nil
+	if moduleFrame.sellGreyTimer then
+		moduleFrame.sellGreyTimer:Cancel()
+		moduleFrame.sellGreyTimer = nil
+	end
 	if endedEarly then
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: (WARNING) you exited merchant before addon could finish selling greys.")
+		DEFAULT_CHAT_FRAME:AddMessage(L["xanUI: (WARNING) you exited merchant before addon could finish selling greys."])
 	end
 
 	if moduleFrame.moneyCount > 0 then
-		DEFAULT_CHAT_FRAME:AddMessage("xanUI: <"..moduleFrame.itemCount.."> Total grey items vendored. ["..GetCoinTextureString(moduleFrame.moneyCount).."]")
+		DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: <%d> Total grey items vendored. [%s]"], moduleFrame.itemCount, GetCoinTextureString(moduleFrame.moneyCount)))
 	end
 end
 
@@ -132,7 +134,7 @@ function moduleFrame:MERCHANT_SHOW()
 
 	--do the timer for selling, only if we have something to work with
 	if #moduleFrame.GreyLootList > 0 and not moduleFrame.sellGreyTimer then
-		moduleFrame.sellGreyTimer = LibAceTimer:ScheduleRepeatingTimer(function()
+		moduleFrame.sellGreyTimer = C_Timer.NewTicker(0.15, function()
 
 			--if they closed early then send a warning
 			if not MerchantFrame:IsVisible() then moduleFrame:StopSellingTimer(true) end
@@ -161,7 +163,7 @@ function moduleFrame:MERCHANT_SHOW()
 				moduleFrame:StopSellingTimer()
 			end
 
-		end, 0.15)
+		end)
 	end
 
 	--do repairs
@@ -178,17 +180,17 @@ function moduleFrame:MERCHANT_SHOW()
 				end
 				if amount > repairCost then
 					RepairAllItems(1)
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Repaired from Guild. ["..GetCoinTextureString(repairCost).."]")
+					DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Repaired from Guild. [%s]"], GetCoinTextureString(repairCost)))
 					return
 				else
-					DEFAULT_CHAT_FRAME:AddMessage("xanUI: Insufficient guild funds to make repairs. ["..GetCoinTextureString(repairCost).."]")
+					DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Insufficient guild funds to make repairs. [%s]"], GetCoinTextureString(repairCost)))
 				end
 			elseif GetMoney() > repairCost then
 				RepairAllItems()
-				DEFAULT_CHAT_FRAME:AddMessage("xanUI: Repaired all items. ["..GetCoinTextureString(repairCost).."]")
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Repaired all items. [%s]"], GetCoinTextureString(repairCost)))
 				return
 			else
-				DEFAULT_CHAT_FRAME:AddMessage("xanUI: Insufficient funds to make repairs. ["..GetCoinTextureString(repairCost).."]")
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(L["xanUI: Insufficient funds to make repairs. [%s]"], GetCoinTextureString(repairCost)))
 			end
 		end
 	end

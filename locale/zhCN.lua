@@ -1,0 +1,27 @@
+local ADDON_NAME, private = ...
+local L = private:NewLocale("zhCN")
+if not L then return end
+
+L["|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20%s|r]."] = "|cFF99CC33xanUI|r [|cFF20ff20showrace|r] - is now [|cFF20ff20%s|r]."
+L["|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20%s|r]."] = "|cFF99CC33xanUI|r [|cFF20ff20gendericon|r] - is now [|cFF20ff20%s|r]."
+L["|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20%s|r]."] = "|cFF99CC33xanUI|r [|cFF20ff20gendertext|r] - is now [|cFF20ff20%s|r]."
+L["|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20%s|r]."] = "|cFF99CC33xanUI|r [|cFF20ff20onlydrac|r] - is now [|cFF20ff20%s|r]."
+L["|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20%s|r]."] = "|cFF99CC33xanUI|r [|cFF20ff20showquests|r] - is now [|cFF20ff20%s|r]."
+L["/xanui showrace - Toggles showing the race icon."] = "/xanui showrace - Toggles showing the race icon."
+L["/xanui gendericon - Toggles showing the gender icon."] = "/xanui gendericon - Toggles showing the gender icon."
+L["/xanui gendertext - Toggles showing the gender text."] = "/xanui gendertext - Toggles showing the gender text."
+L["/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only."] = "/xanui onlydrac - Toggles showing gender icon/text for Dracthyr only."
+L["/xanui showquests - Toggles showing quest icons."] = "/xanui showquests - Toggles showing quest icons."
+L["|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"] = "|cFF99CC33xanUI|r [v|cFF20ff20%s|r]   /xanui, /xui"
+L["xanUI: (WARNING) you exited merchant before addon could finish selling greys."] = "xanUI: (WARNING) you exited merchant before addon could finish selling greys."
+L["xanUI: <%d> Total grey items vendored. [%s]"] = "xanUI: <%d> Total grey items vendored. [%s]"
+L["xanUI: Repaired from Guild. [%s]"] = "xanUI: Repaired from Guild. [%s]"
+L["xanUI: Insufficient guild funds to make repairs. [%s]"] = "xanUI: Insufficient guild funds to make repairs. [%s]"
+L["xanUI: Repaired all items. [%s]"] = "xanUI: Repaired all items. [%s]"
+L["xanUI: Insufficient funds to make repairs. [%s]"] = "xanUI: Insufficient funds to make repairs. [%s]"
+L["|cFF00FF96xanUI: TalkingHead conversation silenced.|r"] = "|cFF00FF96xanUI: TalkingHead conversation silenced.|r"
+L["XanUI MissionMenu"] = "XanUI MissionMenu"
+L["Close"] = "Close"
+L["|cFF99CC33Right-click to select expansion.|r"] = "|cFF99CC33Right-click to select expansion.|r"
+L["[M]"] = "[M]"
+L["[F]"] = "[F]"

@@ -1,8 +1,9 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
+local L = (private and private.L) or setmetatable({}, { __index = function(_, key) return key end })
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
+local addon = _G[ADDON_NAME]
 
 local moduleName = "missionmenu"
 
@@ -138,7 +139,7 @@ local function MM_CreateMenu()
 	xanMissionMenu.initialize = function(self, level)
 		if level == 1 then
 			PlaySound(SOUNDKIT.GS_TITLE_OPTION_EXIT)
-			addButton(level, 'XanUI MissionMenu', 1, 1)
+			addButton(level, L["XanUI MissionMenu"], 1, 1)
 
 			for _, expansion in ipairs(xpacTable) do
 				local garrTypeID = expansion.garrisonTypeID
@@ -169,7 +170,7 @@ local function MM_CreateMenu()
 			end
 
 			addButton(level, "", nil, 1) --space ;)
-			addButton(level, "Close", nil, 1)
+			addButton(level, L["Close"], nil, 1)
 		end
 	end
 
@@ -180,7 +181,7 @@ local function MBtn_OnEnter(self)
 	GameTooltip:SetText(self.title, 1, 1, 1)
 	GameTooltip:AddLine(self.description, nil, nil, nil, true)
 
-	local tooltipAddonText = "|cFF99CC33Right-click to select expansion.|r"
+	local tooltipAddonText = L["|cFF99CC33Right-click to select expansion.|r"]
 	GameTooltip_AddNormalLine(GameTooltip, " ") --empty line
 	GameTooltip_AddNormalLine(GameTooltip, tooltipAddonText)
 	GameTooltip:Show()

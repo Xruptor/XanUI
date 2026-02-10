@@ -75,9 +75,11 @@ local function GetBagSlots(bagType)
 
 	elseif bagType == "bank" then
 		if IsRetail then
-			return NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + NUM_BANKBAGSLOTS
+			local bankSlots = addon.GetNumBankBagSlots and addon:GetNumBankBagSlots() or 0
+			return NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + bankSlots
 		else
-			return NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
+			local bankSlots = addon.GetNumBankBagSlots and addon:GetNumBankBagSlots() or 0
+			return NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + bankSlots
 		end
 	end
 end

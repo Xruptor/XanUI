@@ -23,6 +23,17 @@ local addon = private:GetAddonFrame(ADDON_NAME)
 addon.private = private
 addon.L = L
 
+function addon:GetNumBankBagSlots()
+	local numSlots = _G.NUM_BANKBAG_SLOTS or _G.NUM_BANKBAGSLOTS
+	if type(numSlots) ~= "number" and GetNumBankSlots then
+		numSlots = select(1, GetNumBankSlots())
+	end
+	if type(numSlots) ~= "number" then
+		numSlots = 0
+	end
+	return numSlots
+end
+
 local function EnsureEventDispatcher(target)
 	if target._xanui_events then return end
 	target._xanui_events = {}
@@ -377,9 +388,11 @@ function addon:OpenBankBags()
 	local min, max
 
 	if addon.IsRetail then
-		min, max =  NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + NUM_BANKBAGSLOTS
+		local bankSlots = addon:GetNumBankBagSlots()
+		min, max =  NUM_TOTAL_EQUIPPED_BAG_SLOTS + 1, NUM_TOTAL_EQUIPPED_BAG_SLOTS + bankSlots
 	else
-		min, max =  NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
+		local bankSlots = addon:GetNumBankBagSlots()
+		min, max =  NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + bankSlots
 	end
 
 	if min and max then

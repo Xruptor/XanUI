@@ -1,7 +1,7 @@
-## Interface: 120000, 110207, 50503, 40402, 38000, 30405, 20505, 11508
+## Interface: 120001, 110207, 50503, 40402, 38000, 30405, 20505, 11508
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  4.9
+## Version:  5.0
 ## Notes: Personal customizations and features added to the default UI.
 ## SavedVariables: XanUIDB, QuestPlateSettings
 

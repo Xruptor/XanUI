@@ -11,6 +11,27 @@ addon[moduleName] = CreateFrame("Frame", moduleName.."Frame", UIParent, Backdrop
 local moduleFrame = addon[moduleName]
 addon:EmbedEvents(moduleFrame)
 
+local Util = addon and addon.Util
+local SafeIndex = (Util and Util.SafeIndex) or function(t, k)
+	if not t then return nil end
+	local ok, value = pcall(function() return t[k] end)
+	if ok then return value end
+	return nil
+end
+local SafeSet = (Util and Util.SafeSet) or function(t, k, v)
+	if not t then return false end
+	local ok = pcall(function() t[k] = v end)
+	return ok
+end
+local CanAccessValue = (Util and Util.CanAccessValue) or function(_) return true end
+local SafeUnitCall = (Util and Util.SafeUnitCall) or function(fn, unit, ...)
+	if type(fn) ~= "function" then return nil end
+	if not CanAccessValue(unit) then return nil end
+	local ok, value = pcall(fn, unit, ...)
+	if ok then return value end
+	return nil
+end
+
 local MAX_CACHE = 50
 local CACHE_TTL = 120
 local SPEC_ICON_SIZE = 26
@@ -70,7 +91,8 @@ end
 
 local function CacheSet(guid, specID, icon, source)
 	if not guid or not specID then return end
-	specCache[guid] = { specID = specID, icon = icon, ts = Now(), source = source }
+	if not CanAccessValue(guid) then return end
+	SafeSet(specCache, guid, { specID = specID, icon = icon, ts = Now(), source = source })
 	for i = #specOrder, 1, -1 do
 		if specOrder[i] == guid then
 			table.remove(specOrder, i)
@@ -80,7 +102,7 @@ local function CacheSet(guid, specID, icon, source)
 	if #specOrder > MAX_CACHE then
 		local old = table.remove(specOrder)
 		if old then
-			specCache[old] = nil
+			SafeSet(specCache, old, nil)
 		end
 	end
 end
@@ -97,10 +119,11 @@ local function CacheClear()
 end
 
 local function CacheGet(guid)
-	local entry = guid and specCache[guid]
+	if not guid or not CanAccessValue(guid) then return nil end
+	local entry = SafeIndex(specCache, guid)
 	if not entry then return nil end
 	if Now() - entry.ts > CACHE_TTL then
-		specCache[guid] = nil
+		SafeSet(specCache, guid, nil)
 		for i = #specOrder, 1, -1 do
 			if specOrder[i] == guid then
 				table.remove(specOrder, i)
@@ -343,27 +366,28 @@ local function EnableSpecIcons()
 		ApplySpecIcon(icon, specID, specIcon)
 	end
 
-	local function OnTooltipSetUnit(tooltip)
-		if not tooltip or not tooltip.GetUnit then return end
-		local _, unit = tooltip:GetUnit()
-		if not unit then
-			local focus = GetMouseFocus and GetMouseFocus()
-			if focus and focus.unit then
-				unit = focus.unit
+		local function OnTooltipSetUnit(tooltip)
+			if not tooltip or not tooltip.GetUnit then return end
+			local _, unit = tooltip:GetUnit()
+			if not unit then
+				local focus = GetMouseFocus and GetMouseFocus()
+				if focus and focus.unit then
+					unit = focus.unit
+				end
 			end
-		end
-		if not unit or not UnitIsPlayer(unit) then return end
-		local guid = UnitGUID(unit)
-		if not guid then return end
+			if not unit or not CanAccessValue(unit) then return end
+			if not SafeUnitCall(UnitIsPlayer, unit) then return end
+			local guid = SafeUnitCall(UnitGUID, unit)
+			if not guid then return end
 
-		local specID, specIcon = GetSpecFromTooltip(tooltip, unit)
-		if specID then
-			CacheSet(guid, specID, specIcon, "tooltip")
-			if UnitIsUnit(unit, "target") then
-				UpdateFromCache()
+			local specID, specIcon = GetSpecFromTooltip(tooltip, unit)
+			if specID then
+				CacheSet(guid, specID, specIcon, "tooltip")
+				if SafeUnitCall(UnitIsUnit, unit, "target") then
+					UpdateFromCache()
+				end
 			end
 		end
-	end
 
 	local frame = CreateFrame("Frame")
 	frame:RegisterEvent("PLAYER_TARGET_CHANGED")

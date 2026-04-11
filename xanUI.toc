@@ -1,7 +1,7 @@
-## Interface: 120001, 110207, 50503, 40402, 38000, 30405, 20505, 11508
+## Interface: 120001, 110207, 50503, 40402, 38001, 30405, 20505, 11508
 ## Title: xanUI
 ## Author: Xruptor
-## Version:  5.0
+## Version:  5.1
 ## Notes: Personal customizations and features added to the default UI.
 ## SavedVariables: XanUIDB, QuestPlateSettings
 
@@ -17,6 +17,8 @@ locale\ptBR.lua
 locale\ruRU.lua
 locale\zhCN.lua
 locale\zhTW.lua
+
+util.lua
 
 xanUI.lua
 

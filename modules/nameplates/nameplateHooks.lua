@@ -17,9 +17,23 @@ local GUIDs = {}
 
 local IsInInstance = IsInInstance
 local IsArena = (C_PvP and C_PvP.IsArena) or function() return false end
+local Util = addon and addon.Util
+local SafeIndex = (Util and Util.SafeIndex) or function(t, k)
+	if not t then return nil end
+	local ok, value = pcall(function() return t[k] end)
+	if ok then return value end
+	return nil
+end
+local SafeSet = (Util and Util.SafeSet) or function(t, k, v)
+	if not t then return false end
+	local ok = pcall(function() t[k] = v end)
+	return ok
+end
+local CanAccessValue = (Util and Util.CanAccessValue) or function(_) return true end
 
 local function CanAccessObject(obj)
 	if not obj then return false end
+	if not CanAccessValue(obj) then return false end
 	return issecure() or (obj.IsForbidden and not obj:IsForbidden()) or false
 end
 
@@ -36,26 +50,32 @@ function moduleFrame:GetActiveNameplates()
 end
 
 function moduleFrame:GetFrameFromNameplate(plate)
-	return Nameplates[plate]
+	if not CanAccessValue(plate) then return end
+	return SafeIndex(Nameplates, plate)
 end
 
 function moduleFrame:GetPlateForUnit(unitID)
 	local plate, f = C_NamePlate.GetNamePlateForUnit(unitID)
 	if not isObjSafe(plate) then return end
 	if plate then
-		f = Nameplates[plate]
+		if not CanAccessValue(plate) then return end
+		f = SafeIndex(Nameplates, plate)
 	end
 	return plate, f
 end
 
 function moduleFrame:GetUnitForPlate(plate)
-	return Nameplates[plate] and Nameplates[plate]._unitID
+	if not CanAccessValue(plate) then return end
+	local f = SafeIndex(Nameplates, plate)
+	return f and f._unitID
 end
 
 function moduleFrame:GetPlateForGUID(guid)
-	local plate = GUIDs[guid]
+	if not CanAccessValue(guid) then return end
+	local plate = SafeIndex(GUIDs, guid)
 	if plate then
-		return plate, ActiveNameplates[plate]
+		if not CanAccessValue(plate) then return end
+		return plate, SafeIndex(ActiveNameplates, plate)
 	end
 end
 
@@ -68,7 +88,7 @@ function moduleFrame:NAME_PLATE_CREATED(event, plate)
 	--this will prevent taints and tampering with the nameplate and still allow us to put stuff on it.
 	local f = CreateFrame('frame', nil, plate)
 	f:SetAllPoints()
-	Nameplates[plate] = f
+	SafeSet(Nameplates, plate, f)
 	plate._frame = f
 
 	moduleFrame:SendMessage('XANUI_ON_NEWPLATE', f, plate)
@@ -79,15 +99,16 @@ function moduleFrame:NAME_PLATE_UNIT_ADDED(event, unitID)
 	if not isObjSafe(plate) then return end
 	if not plate then return end
 
-	local f = Nameplates[plate]
+	if not CanAccessValue(plate) then return end
+	local f = SafeIndex(Nameplates, plate)
 	if not f then return end
 
-	ActiveNameplates[plate] = f
+	SafeSet(ActiveNameplates, plate, f)
 	f._unitID = unitID
 
 	local guid = UnitGUID(unitID)
-	if guid then
-		GUIDs[guid] = plate
+	if guid and CanAccessValue(guid) then
+		SafeSet(GUIDs, guid, plate)
 	end
 
 	moduleFrame:SendMessage('XANUI_ON_PLATESHOW', f, plate, unitID)
@@ -98,14 +119,15 @@ function moduleFrame:NAME_PLATE_UNIT_REMOVED(event, unitID)
 	if not isObjSafe(plate) then return end
 	if not plate then return end
 
-	local f = Nameplates[plate]
+	if not CanAccessValue(plate) then return end
+	local f = SafeIndex(Nameplates, plate)
 	if not f then return end
 
-	ActiveNameplates[plate] = nil
+	SafeSet(ActiveNameplates, plate, nil)
 
 	local guid = UnitGUID(unitID)
-	if guid then
-		GUIDs[guid] = nil
+	if guid and CanAccessValue(guid) then
+		SafeSet(GUIDs, guid, nil)
 	end
 
 	moduleFrame:SendMessage('XANUI_ON_PLATEHIDE', f, plate, unitID)

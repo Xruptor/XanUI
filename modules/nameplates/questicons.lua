@@ -12,6 +12,28 @@ local moduleFrame = addon[moduleName]
 addon:EmbedEvents(moduleFrame)
 
 local npHooks = addon["nameplateHooks"]
+local Util = addon and addon.Util
+local CanAccessValue = (Util and Util.CanAccessValue) or function(_) return true end
+local TryUnwrapSecretValue = (Util and Util.TryUnwrapSecretValue) or function(v) return v end
+local SafeIndex = (Util and Util.SafeIndex) or function(t, k)
+	if not t then return nil end
+	local ok, value = pcall(function() return t[k] end)
+	if ok then return value end
+	return nil
+end
+local SafeSet = (Util and Util.SafeSet) or function(t, k, v)
+	if not t then return false end
+	local ok = pcall(function() t[k] = v end)
+	return ok
+end
+local SafeLen = function(t)
+	if not t then return 0 end
+	local ok, len = pcall(function() return #t end)
+	if ok and type(len) == "number" then
+		return len
+	end
+	return 0
+end
 local iconKey = ADDON_NAME .. "QuestIcon"
 local ICON_PATH = "Interface\\AddOns\\"..ADDON_NAME.."\\media\\quest4"
 
@@ -55,12 +77,16 @@ end
 
 local function CacheQuest(questIndex, questID)
 	if questID and C_QuestLog.IsQuestTask(questID) then
-		local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
-		if questName then
-			moduleFrame.QuestByID[questID] = questName
-			moduleFrame.QuestByTitle[questName] = questID
-		end
-		Debug("CacheQuest", "C_TaskQuest", questID, questName)
+			local questName = C_TaskQuest.GetQuestInfoByQuestID(questID)
+			if questName then
+				if CanAccessValue(questID) then
+					SafeSet(moduleFrame.QuestByID, questID, questName)
+				end
+				if CanAccessValue(questName) then
+					SafeSet(moduleFrame.QuestByTitle, questName, questID)
+				end
+			end
+			Debug("CacheQuest", "C_TaskQuest", questID, questName)
 	elseif questIndex then
 		local qInfo = C_QuestLog.GetInfo(questIndex)
 		if not questID then
@@ -69,16 +95,22 @@ local function CacheQuest(questIndex, questID)
 		if qInfo then
 			--isBounty is the world map bounty quests. also known as daily emissary quests
 			--lets not record those, they are hidden anyways
-			if qInfo.title and not qInfo.isHeader then
-				moduleFrame.QuestByID[qInfo.questID] = qInfo.title
-				moduleFrame.QuestByTitle[qInfo.title] = qInfo.questID
-				Debug("CacheQuest", "questIndex", qInfo.questID, qInfo.title)
-			end
+				if qInfo.title and not qInfo.isHeader then
+					if CanAccessValue(qInfo.questID) then
+						SafeSet(moduleFrame.QuestByID, qInfo.questID, qInfo.title)
+					end
+					if CanAccessValue(qInfo.title) then
+						SafeSet(moduleFrame.QuestByTitle, qInfo.title, qInfo.questID)
+					end
+					Debug("CacheQuest", "questIndex", qInfo.questID, qInfo.title)
+				end
 		else
 			--we need to grab the quest info when it's sent back from the server
-			if questID then
-				moduleFrame.QuestByID[questID] = "UpdatePending"
-			end
+				if questID then
+					if CanAccessValue(questID) then
+						SafeSet(moduleFrame.QuestByID, questID, "UpdatePending")
+					end
+				end
 		end
 	end
 end
@@ -201,18 +233,24 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 	--parse the tooltip data
 	if tooltipData and tooltipData.lines then
 
-		for i = 3, #tooltipData.lines do
+		if not CanAccessValue(tooltipData.lines) then
+			iconQuest:Hide()
+			return
+		end
+		local lineCount = SafeLen(tooltipData.lines)
+		for i = 3, lineCount do
 
-			local line = tooltipData.lines[i]
+			local line = SafeIndex(tooltipData.lines, i)
 			if TooltipUtil and TooltipUtil.SurfaceArgs then
 				TooltipUtil.SurfaceArgs(line)
 			end
 
 			if line then
 				local text = GetLineLeftText(line)
+				text = TryUnwrapSecretValue(text)
 
-				if text and questByTitle[text] then
-					local questID = questByTitle[text]
+				if text and CanAccessValue(text) then
+					local questID = SafeIndex(questByTitle, text)
 
 					if questID then
 						local isDone = isQuestComplete(nil, questID)
@@ -260,18 +298,21 @@ local function UpdateQuestIcon(f, plate, unitID, tooltipData)
 						Debug("UpdateQuestIcon", "TooltipData", text, questID, isDone, questType)
 					end
 
-				elseif text and scenarioName and text == scenarioName then
-					questType = 4 -- it's a Scenario quest (bonus objective)
-					hasQuest = true
-					hasIncompleteQuest = true
-					Debug("UpdateQuestIcon", "scenarioName", scenarioName, questType)
-				else
+					elseif text and scenarioName and CanAccessValue(text) and CanAccessValue(scenarioName) and text == scenarioName then
+						questType = 4 -- it's a Scenario quest (bonus objective)
+						hasQuest = true
+						hasIncompleteQuest = true
+						Debug("UpdateQuestIcon", "scenarioName", scenarioName, questType)
+					else
 					--okay so technically speaking we could have scanned each objective using code instead of scanning the tooltip.
 					--the problem is that although an objective can be marked as uncompleted, it may not exactly apply to the current unit being parsed.
 					--in other words their part in the quest MAY be completed, but another unit required may not and still be part of the quest.
 					--So if I were to scan for all objectives not finished, it would mark units that ARE completed in the quest as unfinished.
 					--Hence, it's just better to scan the tooltip to see the objectives being applied to a particular unit.
-					local obj = ScanObjective(text)
+						local obj
+						if CanAccessValue(text) then
+							obj = ScanObjective(text)
+						end
 
 					--we have something to work with
 					if obj ~= nil then
@@ -356,6 +397,7 @@ end
 local function OnTooltipSetUnit(tooltip, tooltipData)
 	if not npHooks then return end
 	if not tooltipData or not tooltipData.guid then return end
+	if not CanAccessValue(tooltipData.guid) then return end
 
 	local plate, f = npHooks:GetPlateForGUID(tooltipData.guid)
 	if f and f._unitID then
@@ -399,11 +441,13 @@ function moduleFrame:HandleQuestLogUpdate()
 		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate")
 
 		for questID, qTitle in pairs(moduleFrame.QuestsToUpdate) do
-			local tmpID = moduleFrame.QuestByTitle[qTitle]
+			local tmpID = (CanAccessValue(qTitle) and SafeIndex(moduleFrame.QuestByTitle, qTitle)) or nil
 			if not tmpID then
 				CacheQuestByQuestID(questID)
 			end
-			moduleFrame.QuestsToUpdate[questID] = nil
+			if CanAccessValue(questID) then
+				SafeSet(moduleFrame.QuestsToUpdate, questID, nil)
+			end
 		end
 
 		Debug("QUEST_LOG_UPDATE", "QuestsToUpdate")
@@ -433,7 +477,7 @@ function moduleFrame:QUEST_ACCEPTED(event, questID)
 	Debug("QUEST_ACCEPTED", questID)
 
 	CacheQuestByQuestID(questID)
-	if moduleFrame.QuestByID[questID] == "UpdatePending" then
+	if CanAccessValue(questID) and SafeIndex(moduleFrame.QuestByID, questID) == "UpdatePending" then
 		C_QuestLog.RequestLoadQuestByID(questID)
 	end
 	--possibly need to update icons when a quest is accepted, need to see if triggers QUEST_LOG_UPDATE
@@ -442,20 +486,24 @@ end
 function moduleFrame:QUEST_REMOVED(event, questID)
 	Debug("QUEST_REMOVED", questID)
 
-	local qTitle = moduleFrame.QuestByID[questID]
+	local qTitle = CanAccessValue(questID) and SafeIndex(moduleFrame.QuestByID, questID) or nil
 
-	moduleFrame.QuestByID[questID] = nil
-	moduleFrame.QuestsToUpdate[questID] = nil
+	if CanAccessValue(questID) then
+		SafeSet(moduleFrame.QuestByID, questID, nil)
+		SafeSet(moduleFrame.QuestsToUpdate, questID, nil)
+	end
 
 	if qTitle then
-		moduleFrame.QuestByTitle[qTitle] = nil
+		if CanAccessValue(qTitle) then
+			SafeSet(moduleFrame.QuestByTitle, qTitle, nil)
+		end
 		moduleFrame:UpdateAllQuestIcons("QUEST_REMOVED")
 	end
 end
 
 function moduleFrame:QUEST_DATA_LOAD_RESULT(event, questID, success)
 	--this event is triggered when we request a quest update from the server using C_QuestLog.RequestLoadQuestByID
-	if success and moduleFrame.QuestByID[questID] == "UpdatePending" then
+	if success and CanAccessValue(questID) and SafeIndex(moduleFrame.QuestByID, questID) == "UpdatePending" then
 		CacheQuestByQuestID(questID)
 		moduleFrame:UpdateAllQuestIcons("QUEST_DATA_LOAD_RESULT")
 	end
@@ -465,12 +513,14 @@ function moduleFrame:QUEST_WATCH_UPDATE(event, questID)
 	Debug("QUEST_WATCH_UPDATE", questID)
 
 	local questIndex = C_QuestLog.GetLogIndexForQuestID(questID)
-	if questIndex then
-		local qInfo = C_QuestLog.GetInfo(questIndex)
-		if qInfo and qInfo.title then
-			moduleFrame.QuestsToUpdate[questID] = qInfo.title
+		if questIndex then
+			local qInfo = C_QuestLog.GetInfo(questIndex)
+			if qInfo and qInfo.title then
+				if CanAccessValue(questID) then
+					SafeSet(moduleFrame.QuestsToUpdate, questID, qInfo.title)
+				end
+			end
 		end
-	end
 end
 
 function moduleFrame:UNIT_QUEST_LOG_CHANGED(event, unitID)
